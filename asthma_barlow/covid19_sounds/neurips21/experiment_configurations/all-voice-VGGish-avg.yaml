@@ -1,0 +1,73 @@
+---
+  # General.
+  method_string: "all-voice-VGGish-avg"
+  model_path: ""
+  results_summary_path: ""
+  configuration_dict: ""
+  gpu: 1
+
+  train_batch_size: 8
+  devel_batch_size: 8
+  test_batch_size: 8
+
+  # Evaluation.
+  number_of_trials: 3
+  val_every_n_epoch: 1
+  are_test_labels_available: True
+
+  # Training.
+  initial_learning_rate: 0.0000001
+  number_of_epochs: 10000
+  patience: 200
+
+  # Augmentation.
+  augmentation_configuration:
+    specaug:
+      frequency_masking_para: 16
+      frequency_mask_num: 1
+      time_masking_para: 24
+      time_mask_num: 2
+      inputs_to_augment: [ cough_logmel_spectrogram, breath_logmel_spectrogram, voice_logmel_spectrogram ]
+    input_gaussian_noise:
+      standard_deviation: 0.000001
+      inputs_to_augment: [ cough_logmel_spectrogram, breath_logmel_spectrogram, voice_logmel_spectrogram ]
+    amplitude_aug:
+      factor: 0.1
+      inputs_to_augment: [ cough_logmel_spectrogram, breath_logmel_spectrogram, voice_logmel_spectrogram ]
+
+  # Model.
+  data_focus: all  # [core, all, all+web]
+  homogeneous_batches: False
+  barlow_twins: False
+  model_configuration:
+    input_type_list:
+      - voice_logmel_spectrogram
+      - voice_logmel_spectrogram_support
+#      - breath_logmel_spectrogram
+#      - breath_logmel_spectrogram_support
+#      - cough_logmel_spectrogram
+#      - cough_logmel_spectrogram_support
+    output_type_list:
+      - asthma
+    bottom_model: Identity
+    bottom_model_configuration:
+      placeholder: ""
+    core_model: audionet-VGGish
+    core_model_configuration:
+      block_filter_list: [ 64, 128, 256, 512 ]
+      block_multiplier_list: [ 1, 1, 2, 2 ]
+      use_se: False
+      use_tc: False
+      use_ds: False
+      pool_type: max
+    global_pooling: Average  # [Attention, LinearSoftmax, Average, Max, AvgMax_PANN, MaxPrediction, VGG16Top]
+    global_pooling_configuration:
+      number_of_heads: 4
+      use_temporal_std: False
+      pool_heads: no_pool  # [no_pool, gating, attention]
+      auto_pooling: no_auto  # [no_auto, Auto, MultiResolution, GumbelSoftmax]
+      use_auto_array: False
+    top_model: FeedForwardBlock
+    top_model_configuration:
+      layer_units: [96, ]
+      outputs_list: [1, ]
