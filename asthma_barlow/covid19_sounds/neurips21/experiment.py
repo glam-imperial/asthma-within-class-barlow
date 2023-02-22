@@ -1,11 +1,9 @@
 import collections
 import os
-import math
 import statistics
 
 import tensorflow as tf
 import numpy as np
-from tensorflow.python.keras.utils.generic_utils import to_list
 
 from common.common import safe_make_dir
 from common.evaluation.monitor import CustomSaver
@@ -40,8 +38,9 @@ def experiment_run(config_dict):
     monitor_target_to_measures = config_dict["monitor_target_to_measures"]
     target_to_task_type = config_dict["target_to_task_type"]
     output_channel_targets = config_dict["output_channel_targets"]
-    homogeneous_batches = config_dict["homogeneous_batches"]
-    barlow_twins = config_dict["barlow_twins"]
+    use_homogeneous_batches = config_dict["homogeneous_batches"]
+    ssl_regulariser = config_dict["ssl_regulariser"]
+    ssl_type = config_dict["ssl_type"]
     input_type_list = model_configuration["input_type_list"]
     output_type_list = model_configuration["output_type_list"]
 
@@ -69,7 +68,8 @@ def experiment_run(config_dict):
                                                             batch_size=train_batch_size,
                                                             buffer_size=15 * train_batch_size,
                                                             path_list_dict=path_list_dict["train"],
-                                                            augmentation_configuration=augmentation_configuration)
+                                                            augmentation_configuration=augmentation_configuration,
+                                                            use_homogeneous_batches=use_homogeneous_batches)
             het_b_g_train = het_b_g_train_obj.get_tf_dataset()
             het_b_g_devel_obj = HeterogeneousBatchGenerator(tf_records=tfrecords_folder,
                                                             is_training=False,
@@ -81,7 +81,8 @@ def experiment_run(config_dict):
                                                             batch_size=devel_batch_size,
                                                             buffer_size=15 * devel_batch_size,
                                                             path_list_dict=path_list_dict["devel"],
-                                                            augmentation_configuration=None)
+                                                            augmentation_configuration=None,
+                                                            use_homogeneous_batches=use_homogeneous_batches)
             het_b_g_devel = het_b_g_devel_obj.get_tf_dataset()
             input_type_list_eff = ["voice_logmel_spectrogram",
                                    "voice_logmel_spectrogram_support",
@@ -106,7 +107,8 @@ def experiment_run(config_dict):
                                                                      batch_size=test_batch_size,
                                                                      buffer_size=15 * test_batch_size,
                                                                      path_list_dict=path_list_dict["test"],
-                                                                     augmentation_configuration=None)
+                                                                     augmentation_configuration=None,
+                                                                     use_homogeneous_batches=use_homogeneous_batches)
             het_b_g_test_all_three = het_b_g_test_all_three_obj.get_tf_dataset()
             input_type_list_eff = ["voice_logmel_spectrogram",
                                    "voice_logmel_spectrogram_support"]
@@ -122,7 +124,8 @@ def experiment_run(config_dict):
                                                                      batch_size=test_batch_size,
                                                                      buffer_size=15 * test_batch_size,
                                                                      path_list_dict=path_list_dict["test"],
-                                                                     augmentation_configuration=None)
+                                                                     augmentation_configuration=None,
+                                                                     use_homogeneous_batches=use_homogeneous_batches)
             het_b_g_test_all_voice = het_b_g_test_all_voice_obj.get_tf_dataset()
             input_type_list_eff = ["breath_logmel_spectrogram",
                                    "breath_logmel_spectrogram_support"]
@@ -138,7 +141,8 @@ def experiment_run(config_dict):
                                                                       batch_size=test_batch_size,
                                                                       buffer_size=15 * test_batch_size,
                                                                       path_list_dict=path_list_dict["test"],
-                                                                      augmentation_configuration=None)
+                                                                      augmentation_configuration=None,
+                                                                      use_homogeneous_batches=use_homogeneous_batches)
             het_b_g_test_all_breath = het_b_g_test_all_breath_obj.get_tf_dataset()
             input_type_list_eff = ["cough_logmel_spectrogram",
                                    "cough_logmel_spectrogram_support"]
@@ -154,23 +158,24 @@ def experiment_run(config_dict):
                                                                      batch_size=test_batch_size,
                                                                      buffer_size=15 * test_batch_size,
                                                                      path_list_dict=path_list_dict["test"],
-                                                                     augmentation_configuration=None)
+                                                                     augmentation_configuration=None,
+                                                                     use_homogeneous_batches=use_homogeneous_batches)
             het_b_g_test_all_cough = het_b_g_test_all_cough_obj.get_tf_dataset()
 
             pos_weights, \
             true_train_dict, \
             true_devel_dict, \
-            true_test_dict = get_classification_label_info(sess,
-                                                           [het_b_g_train[k][3] for k in sorted(het_b_g_train.keys())],
-                                                           [het_b_g_devel[k][3] for k in sorted(het_b_g_devel.keys())],
-                                                           [het_b_g_test_all_cough[k][3] for k in sorted(het_b_g_test_all_cough.keys())],
-                                                           [het_b_g_train_obj.steps_per_epoch[k] for k in sorted(het_b_g_train.keys())],
-                                                           [het_b_g_devel_obj.steps_per_epoch[k] for k in sorted(het_b_g_devel.keys())],
-                                                           [het_b_g_test_all_cough_obj.steps_per_epoch[k] for k in sorted(het_b_g_test_all_cough.keys())],
-                                                           [het_b_g_train[k][2] for k in sorted(het_b_g_train.keys())],
-                                                           [het_b_g_devel[k][2] for k in sorted(het_b_g_devel.keys())],
-                                                           [het_b_g_test_all_cough[k][2] for k in sorted(het_b_g_test_all_cough.keys())],
-                                                           output_type_list)
+            true_test_dict = get_classification_label_info(sess=sess,
+                                                           init_op_train_list=[het_b_g_train[k][3] for k in sorted(het_b_g_train.keys())],
+                                                           init_op_devel_list=[het_b_g_devel[k][3] for k in sorted(het_b_g_devel.keys())],
+                                                           init_op_test_list=[het_b_g_test_all_cough[k][3] for k in sorted(het_b_g_test_all_cough.keys())],
+                                                           train_steps_per_epoch_list=[het_b_g_train_obj.steps_per_epoch[k] for k in sorted(het_b_g_train.keys())],
+                                                           devel_steps_per_epoch_list=[het_b_g_devel_obj.steps_per_epoch[k] for k in sorted(het_b_g_devel.keys())],
+                                                           test_steps_per_epoch_list=[het_b_g_test_all_cough_obj.steps_per_epoch[k] for k in sorted(het_b_g_test_all_cough.keys())],
+                                                           next_element_train_list=[het_b_g_train[k][2] for k in sorted(het_b_g_train.keys())],
+                                                           next_element_devel_list=[het_b_g_devel[k][2] for k in sorted(het_b_g_devel.keys())],
+                                                           next_element_test_list=[het_b_g_test_all_cough[k][2] for k in sorted(het_b_g_test_all_cough.keys())],
+                                                           output_type_list=output_type_list)
 
             with variable_scope("Model"):
                 model_configuration_effective = {k: v for k, v in model_configuration.items()}
@@ -189,7 +194,8 @@ def experiment_run(config_dict):
                                         output_type_list=output_type_list,
                                         other_outputs=other_outputs,
                                         pos_weights=pos_weights,
-                                        barlow_twins=barlow_twins)
+                                        ssl_regulariser=ssl_regulariser,
+                                        ssl_type=ssl_type)
 
             optimizer = tf.keras.optimizers.Adam(learning_rate=initial_learning_rate)
 
@@ -260,12 +266,14 @@ def experiment_run(config_dict):
                         data_eff = [d[:, :, :64] for d in data[1][0]]
                         # data_eff = data[1][0]
 
-                        keras_output = keras_model_test[data[0]].predict(x=data_eff,
-                                                                         verbose=0,
-                                                                         batch_size=devel_batch_size,
-                                                                         callbacks=None,
-                                                                         workers=1,
-                                                                         use_multiprocessing=True)
+                        modality_combination = data[0]
+
+                        keras_output = keras_model_test[modality_combination].predict(x=data_eff,
+                                                                                      verbose=0,
+                                                                                      batch_size=devel_batch_size,
+                                                                                      callbacks=None,
+                                                                                      workers=1,
+                                                                                      use_multiprocessing=True)
                         for o_i, output_type in enumerate(output_type_list):
                             if len(output_type_list) > 1:
                                 pred_devel_np[output_type].append(keras_output[0])
@@ -320,16 +328,16 @@ def experiment_run(config_dict):
                     pred_test_np = collections.defaultdict(list)
                     true_test_np = collections.defaultdict(list)
                     for data in het_b_g_test_all_three_obj.heterogeneous_generation(sess, shuffle=False):
-
+                        modality_combination = data[0]
                         data_eff = [d[:, :, :64] for d in data[1][0]]
                         # data_eff = data[1][0]
                         print(keras_model_test.keys())
-                        keras_output = keras_model_test[data[0]].predict(x=data_eff,
-                                                                         verbose=0,
-                                                                         batch_size=test_batch_size,
-                                                                         callbacks=None,
-                                                                         workers=1,
-                                                                         use_multiprocessing=True)
+                        keras_output = keras_model_test[modality_combination].predict(x=data_eff,
+                                                                                      verbose=0,
+                                                                                      batch_size=test_batch_size,
+                                                                                      callbacks=None,
+                                                                                      workers=1,
+                                                                                      use_multiprocessing=True)
                         for o_i, output_type in enumerate(output_type_list):
                             if len(output_type_list) > 1:
                                 pred_test_np[output_type].append(keras_output[o_i])
@@ -372,14 +380,15 @@ def experiment_run(config_dict):
                     pred_test_np = collections.defaultdict(list)
                     true_test_np = collections.defaultdict(list)
                     for data in het_b_g_test_all_voice_obj.heterogeneous_generation(sess, shuffle=False):
+                        modality_combination = data[0]
                         data_eff = [d[:, :, :64] for d in data[1][0]]
                         # data_eff = data[1][0]
-                        keras_output = keras_model_test[data[0]].predict(x=data_eff,
-                                                                         verbose=0,
-                                                                         batch_size=test_batch_size,
-                                                                         callbacks=None,
-                                                                         workers=1,
-                                                                         use_multiprocessing=True)
+                        keras_output = keras_model_test[modality_combination].predict(x=data_eff,
+                                                                                      verbose=0,
+                                                                                      batch_size=test_batch_size,
+                                                                                      callbacks=None,
+                                                                                      workers=1,
+                                                                                      use_multiprocessing=True)
                         for o_i, output_type in enumerate(output_type_list):
                             if len(output_type_list) > 1:
                                 pred_test_np[output_type].append(keras_output[o_i])
@@ -417,14 +426,15 @@ def experiment_run(config_dict):
                     pred_test_np = collections.defaultdict(list)
                     true_test_np = collections.defaultdict(list)
                     for data in het_b_g_test_all_breath_obj.heterogeneous_generation(sess, shuffle=False):
+                        modality_combination = data[0]
                         data_eff = [d[:, :, :64] for d in data[1][0]]
                         # data_eff = data[1][0]
-                        keras_output = keras_model_test[data[0]].predict(x=data_eff,
-                                                                         verbose=0,
-                                                                         batch_size=test_batch_size,
-                                                                         callbacks=None,
-                                                                         workers=1,
-                                                                         use_multiprocessing=True)
+                        keras_output = keras_model_test[modality_combination].predict(x=data_eff,
+                                                                                      verbose=0,
+                                                                                      batch_size=test_batch_size,
+                                                                                      callbacks=None,
+                                                                                      workers=1,
+                                                                                      use_multiprocessing=True)
                         for o_i, output_type in enumerate(output_type_list):
                             if len(output_type_list) > 1:
                                 pred_test_np[output_type].append(keras_output[o_i])
@@ -461,14 +471,15 @@ def experiment_run(config_dict):
                     pred_test_np = collections.defaultdict(list)
                     true_test_np = collections.defaultdict(list)
                     for data in het_b_g_test_all_cough_obj.heterogeneous_generation(sess, shuffle=False):
+                        modality_combination = data[0]
                         data_eff = [d[:, :, :64] for d in data[1][0]]
                         # data_eff = data[1][0]
-                        keras_output = keras_model_test[data[0]].predict(x=data_eff,
-                                                                         verbose=0,
-                                                                         batch_size=test_batch_size,
-                                                                         callbacks=None,
-                                                                         workers=1,
-                                                                         use_multiprocessing=True)
+                        keras_output = keras_model_test[modality_combination].predict(x=data_eff,
+                                                                                      verbose=0,
+                                                                                      batch_size=test_batch_size,
+                                                                                      callbacks=None,
+                                                                                      workers=1,
+                                                                                      use_multiprocessing=True)
                         for o_i, output_type in enumerate(output_type_list):
                             if len(output_type_list) > 1:
                                 pred_test_np[output_type].append(keras_output[o_i])

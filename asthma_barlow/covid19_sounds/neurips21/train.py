@@ -6,9 +6,9 @@ def make_config_dict_list():
     config_dict_list = list()
 
     for name in [
-        # "all-breath-VGGish-avg",
-        # "all-cough-VGGish-avg",
         "all-voice-VGGish-avg",
+        "all-breath-VGGish-avg",
+        "all-cough-VGGish-avg",
         # "all-voice-ResNet-avg",
         # "all-voice-VGGish-avg-mt",
         # "all-voice-VGGish-avg-gr",

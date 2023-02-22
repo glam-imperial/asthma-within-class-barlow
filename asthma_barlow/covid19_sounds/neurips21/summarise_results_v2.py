@@ -1,5 +1,7 @@
 import statistics
 import os.path
+import warnings
+warnings.filterwarnings("ignore")
 
 from common.common import load_pickle
 
@@ -83,9 +85,6 @@ for name in [
         "all-all-VGGish-avg-opt_thresh-hom",
         # "all-all-VGGish-avg-opt_thresh-hom-barlow",
         # "all-voice-VGGish-avg-opt_thresh-hom-barlow-cdpl",
-        "all-breath-VGGish-avg-opt_thresh",
-        "all-cough-VGGish-avg-opt_thresh",
-        "all-voice-VGGish-avg-opt_thresh",
         "all-voice-VGGish-avg-opt_thresh-mt",
         "all-voice-VGGish-avg-opt_thresh-gr",
         "all-voice-VGGish-avg-opt_thresh-hom",
@@ -99,6 +98,9 @@ for name in [
         # "all-voice-ResNetish-avg-opt_thresh-hom-barlow",
         # "all-voice-SEResNetish-avg-opt_thresh",
         # "all-voice-SEResNetish-avg-opt_thresh-hom-barlow",
+        "all-breath-VGGish-avg-opt_thresh",
+        "all-cough-VGGish-avg-opt_thresh",
+        "all-voice-VGGish-avg-opt_thresh",
 
 ]:
 
@@ -141,8 +143,8 @@ for name in [
         # for comb in ["all_three", "voice", "breath", "cough"]:
         print("overall")
         # for comb in ["voice", "all_three"]:
-        # for comb in ["voice", "breath", "cough"]:
-        for comb in ["voice", ]:
+        for comb in ["voice", "breath", "cough"]:
+        # for comb in ["voice", ]:
             print(comb)
             print("Test  AU PR:    ", trial_average(trial_summaries[comb], "test_au_pr"))
             print("Test  AU ROC:   ", trial_average(trial_summaries[comb], "test_au_roc"))

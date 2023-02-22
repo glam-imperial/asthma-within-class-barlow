@@ -1,13 +1,10 @@
 import collections
 from os.path import exists
 
-import numpy as np
 import librosa
 from transformers import Wav2Vec2Processor, Wav2Vec2Model
 import numpy as np
 import torch
-
-import tensorflow as tf
 
 DATA_FOLDER = "/data/Downloads/COVIDSounds/NeurIPS2021-data"
 AUDIO_FOLDER = DATA_FOLDER + "/covid19_data_0426/covid19_data_0426"
@@ -207,9 +204,10 @@ TYPES_STATS["recording_source"]["web"] = "web"
 
 
 def get_label(metadata, label_name, modality_type=None):
+    # Get one-hot numpy label.
+    # Multi-class case: age, sex, smoking, language, covid_tested, hospitalised, recording_source.
     if modality_type is None:
-        # number_of_classes = len(TYPES_STATS[label_name])
-        number_of_classes = len(set(list(TYPES_STATS[label_name].values())))
+        number_of_classes = len(set(list(TYPES_STATS[label_name].values()))) # .values() because we want the cleaned-up metadata types, not the original with occasional typo.
         print(label_name, number_of_classes)
         label_value = np.zeros((number_of_classes,), dtype=np.float32)
         metadata_clean = TYPES_STATS[label_name][metadata]
@@ -217,6 +215,7 @@ def get_label(metadata, label_name, modality_type=None):
             if label == metadata_clean:
                 label_value[c] = 1.0
                 break
+    # Binary multi-task classification case: med_history, symptoms.
     else:
         label_value = np.zeros((1,), dtype=np.float32)
         flag = False
@@ -267,6 +266,7 @@ def modality_exists(row, modality, recording_source):
     else:
         raise ValueError("Invalid modality choice.")
 
+    # Accommodate some filename peculiarities.
     filepath = subfolder_name + "/" + filename
     file_exists = exists(filepath)
     if not file_exists:
@@ -379,21 +379,11 @@ def get_wav2vec2_model():
 
 
 def get_wav2vec_embeddings(waveform, wav2vec2_model):
-    # waveform_norm = (waveform - waveform.mean()) / (waveform.std() + 1e-5)
-    #
-    # if waveform_norm.size > 246000:
-    #     waveform_norm = waveform_norm[:246000]
-    # elif waveform_norm.size < 246000:
-    #     waveform_norm = np.hstack([waveform_norm, np.zeros((246000 - waveform_norm.size, ), dtype=waveform_norm.dtype)])
-    #
-    # wav2vec2_model = get_wav2vec2_model()
-    # wav2vec2_features = wav2vec2_model(np.vstack([waveform_norm.reshape((1, -1)), waveform_norm.reshape((1, -1))]))
-    # print(wav2vec2_features.shape)
-    # wav2vec2_features = wav2vec2_features.reshape((768, 32))
-
-    # wav2vec2_processor, wav2vec2_model = get_wav2vec2_model()
     wav2vec2_processor, wav2vec2_model = wav2vec2_model
-    input_values = wav2vec2_processor(waveform, return_tensors = "pt", padding = "longest", sampling_rate=16000)  # Batch size 1
+    input_values = wav2vec2_processor(waveform,
+                                      return_tensors="pt",
+                                      padding="longest",
+                                      sampling_rate=16000)  # Batch size 1
 
     with torch.no_grad():
         outputs = wav2vec2_model(**input_values)
@@ -405,13 +395,9 @@ def get_wav2vec_embeddings(waveform, wav2vec2_model):
     return last_hidden_states
 
 
-def get_features_and_stats(waveform, wav2vec2_model):
-
-    # waveform_norm = waveform * (0.7079 / waveform.max())
-    # maxv = float(np.iinfo(np.int16).max)
-    # waveform_norm = (waveform_norm * maxv).astype(np.float32)
-
-    wav2vec_embeddings = get_wav2vec_embeddings(waveform, wav2vec2_model)
+# def get_features_and_stats(waveform, wav2vec2_model):
+def get_features_and_stats(waveform):
+    # wav2vec_embeddings = get_wav2vec_embeddings(waveform, wav2vec2_model)
 
     # print(waveform.dtype, waveform.max())
     # waveform_norm = (waveform / np.iinfo(np.int16).max).astype(np.float32)
@@ -419,46 +405,46 @@ def get_features_and_stats(waveform, wav2vec2_model):
     # maxv = np.iinfo(np.int16).max
     # waveform_norm = (waveform_norm * maxv).astype(np.float32)
 
-    # waveform_std = waveform.std()
-    # if waveform_std == 0.0:
-    #     waveform_std = 1.0
-    #
-    # waveform_norm = (waveform - waveform.mean()) / waveform_std
-    waveform_norm = waveform
+    waveform_std = waveform.std()
+    if waveform_std == 0.0:
+        waveform_std = 1.0
 
-    # spectrogram = np.abs(librosa.stft(waveform_norm, n_fft=400, hop_length=10 * 16)) ** 1.0
-    # logmel_spectrogram = librosa.power_to_db(
-    #     librosa.feature.melspectrogram(y=waveform_norm,
-    #                                    sr=16000,
-    #                                    S=spectrogram,
-    #                                    n_mels=128))#,
-    #                                    # fmin=125,
-    #                                    # fmax=7500))
+    waveform_norm = (waveform - waveform.mean()) / waveform_std
+    # waveform_norm = waveform
+
+    spectrogram = np.abs(librosa.stft(waveform_norm, n_fft=400, hop_length=10 * 16)) ** 1.0
+    logmel_spectrogram = librosa.power_to_db(
+        librosa.feature.melspectrogram(y=waveform_norm,
+                                       sr=16000,
+                                       S=spectrogram,
+                                       n_mels=128))#,
+                                       # fmin=125,
+                                       # fmax=7500))
     # mfcc = librosa.feature.mfcc(waveform_norm,
     #                             sr=16000,
     #                             n_mfcc=80,
     #                             S=logmel_spectrogram)
 
     # spectrogram = spectrogram.transpose()[:-1, :]
-    # logmel_spectrogram = logmel_spectrogram.transpose()[:-1, :]
+    logmel_spectrogram = logmel_spectrogram.transpose()[:-1, :]
     # mfcc = mfcc.transpose()[:-1, :]
 
     # print(logmel_spectrogram)
-    # print(logmel_spectrogram.shape)
+    print(logmel_spectrogram.shape)
 
-    # if logmel_spectrogram.shape[0] % 96 != 0:
-    #     unsupport = int(96 - logmel_spectrogram.shape[0] % 96)
-    #     logmel_spectrogram = np.vstack([logmel_spectrogram,
-    #                                     np.zeros((96 - logmel_spectrogram.shape[0] % 96, 128), dtype=np.float32)])
-    # else:
-    #     unsupport = 0
-    unsupport = 0
+    if logmel_spectrogram.shape[0] % 96 != 0:
+        unsupport = int(96 - logmel_spectrogram.shape[0] % 96)
+        logmel_spectrogram = np.vstack([logmel_spectrogram,
+                                        np.zeros((96 - logmel_spectrogram.shape[0] % 96, 128), dtype=np.float32)])
+    else:
+        unsupport = 0
+    # unsupport = 0
 
     x_dict = dict()
     # x_dict["waveform"] = waveform_norm
-    # x_dict["logmel_spectrogram"] = logmel_spectrogram
+    x_dict["logmel_spectrogram"] = logmel_spectrogram
     # x_dict["mfcc"] = mfcc
-    x_dict["wav2vec_embeddings"] = wav2vec_embeddings
+    # x_dict["wav2vec_embeddings"] = wav2vec_embeddings
 
     x_dict["unsupport"] = unsupport
 

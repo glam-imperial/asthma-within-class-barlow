@@ -8,7 +8,6 @@ PROJECT_FOLDER = '/data/PycharmProjects/AsthmaProject'
 
 DATA_FOLDER = "/data/Downloads/COVIDSounds/NeurIPS2021-data"
 AUDIO_FOLDER = DATA_FOLDER + "/covid19_data_0426"
-# TFRECORDS_FOLDER = DATA_FOLDER + "/tfrecords"
 TFRECORDS_FOLDER = DATA_FOLDER + "/tfrecords_fair"
 OUTPUT_FOLDER = DATA_FOLDER + '/Results'
 

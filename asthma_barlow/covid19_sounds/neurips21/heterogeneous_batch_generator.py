@@ -1,4 +1,5 @@
 import math
+import collections
 
 import numpy as np
 import numpy.random as random
@@ -19,7 +20,8 @@ class HeterogeneousBatchGenerator:
                  buffer_size,
                  path_list_dict,
                  use_autopad=False,
-                 augmentation_configuration=None):
+                 augmentation_configuration=None,
+                 use_homogeneous_batches=False):
         self.tf_records = tf_records
         self.is_training = is_training
         self.partition = partition
@@ -32,10 +34,13 @@ class HeterogeneousBatchGenerator:
         self.path_list_dict = path_list_dict
         self.use_autopad = use_autopad
         self.augmentation_configuration = augmentation_configuration
+        self.use_homogeneous_batches = use_homogeneous_batches
 
         self.batch_generators = dict()
 
         print(self.path_list_dict.keys())
+
+        original_modality_availability = "orig"
 
         use_modality_partition = dict()
         use_modality_partition["voice"] = False
@@ -44,10 +49,18 @@ class HeterogeneousBatchGenerator:
         for input_type in self.input_type_list:
             if "voice" in input_type:
                 use_modality_partition["voice"] = True
+                if "v" not in original_modality_availability:
+                    original_modality_availability += "_v"
             if "breath" in input_type:
                 use_modality_partition["breath"] = True
+                if "b" not in original_modality_availability:
+                    original_modality_availability += "_b"
             if "cough" in input_type:
                 use_modality_partition["cough"] = True
+                if "c" not in original_modality_availability:
+                    original_modality_availability += "_c"
+
+        self.batch_generator_config = collections.defaultdict(dict)
 
         self.sizes = dict()
         self.steps_per_epoch = dict()
@@ -99,45 +112,59 @@ class HeterogeneousBatchGenerator:
             else:
                 raise ValueError
 
-            if "pos" in modality_combination:
-                asthma_str = "_pos"
-            elif "neg" in modality_combination:
-                asthma_str = "_neg"
+            if self.use_homogeneous_batches:
+                if "pos" in modality_combination:
+                    asthma_str = "_pos"
+                elif "neg" in modality_combination:
+                    asthma_str = "_neg"
+                else:
+                    asthma_str = ""
             else:
                 asthma_str = ""
 
             # modality_combination_eff = modality_combination_eff + modality_combination[6:]
-            modality_combination_eff = modality_combination_eff + modality_combination_eff_2 + asthma_str
-            counter = 0
-            if modality_combination_eff + repr(counter) not in self.batch_generators.keys():
-                modality_combination_eff = modality_combination_eff + repr(counter)
-            else:
-                counter = 1
-                while True:
-                    if modality_combination_eff + repr(counter) in self.batch_generators.keys():
-                        counter += 1
-                    else:
-                        modality_combination_eff = modality_combination_eff + repr(counter)
-                        break
+            modality_combination_clean = modality_combination_eff + modality_combination_eff_2
+            modality_combination_eff = original_modality_availability + modality_combination_eff + modality_combination_eff_2 + asthma_str
+            # counter = 0
+            # if modality_combination_eff + repr(counter) not in self.batch_generators.keys():
+            #     modality_combination_eff = modality_combination_eff + repr(counter)
+            # else:
+            #     counter = 1
+            #     while True:
+            #         if modality_combination_eff + repr(counter) in self.batch_generators.keys():
+            #             counter += 1
+            #         else:
+            #             modality_combination_eff = modality_combination_eff + repr(counter)
+            #             break
 
+            self.batch_generator_config[modality_combination_eff]["modality_combination_clean"] = modality_combination_clean
+            self.batch_generator_config[modality_combination_eff]["name_to_metadata"] = name_to_metadata_eff
+            self.batch_generator_config[modality_combination_eff]["input_type_list"] = input_type_list_eff
+            if "path_list" not in self.batch_generator_config[modality_combination_eff].keys():
+                self.batch_generator_config[modality_combination_eff]["path_list"] = path_list
+            else:
+                self.batch_generator_config[modality_combination_eff]["path_list"].extend(path_list)
+
+        for modality_combination_eff in self.batch_generator_config.keys():
+            print()
             # dataset, \
             # iterator, \
             # next_element, \
             # init_op
-            self.batch_generators[modality_combination_eff] =\
+            self.batch_generators[modality_combination_eff] = \
                 BatchGenerator(tf_records_folder=self.tf_records,
                                is_training=self.is_training,
                                partition=self.partition,
                                are_test_labels_available=self.are_test_labels_available,
-                               name_to_metadata=name_to_metadata_eff,
-                               input_type_list=input_type_list_eff,
+                               name_to_metadata=self.batch_generator_config[modality_combination_eff]["name_to_metadata"],
+                               input_type_list=self.batch_generator_config[modality_combination_eff]["input_type_list"],
                                output_type_list=self.output_type_list,
                                batch_size=self.batch_size,
                                buffer_size=15 * self.batch_size,
-                               path_list=path_list,
-                               augmentation_configuration=augmentation_configuration).get_tf_dataset()
-            self.sizes[modality_combination_eff] = len(path_list)
-            self.steps_per_epoch[modality_combination_eff] = math.ceil(len(path_list) / batch_size)
+                               path_list=self.batch_generator_config[modality_combination_eff]["path_list"],
+                               augmentation_configuration=self.augmentation_configuration).get_tf_dataset()
+            self.sizes[modality_combination_eff] = len(self.batch_generator_config[modality_combination_eff]["path_list"])
+            self.steps_per_epoch[modality_combination_eff] = math.ceil(len(self.batch_generator_config[modality_combination_eff]["path_list"]) / batch_size)
 
     def get_tf_dataset(self):
         print(self.sizes)
@@ -177,7 +204,11 @@ class HeterogeneousBatchGenerator:
 
             modality_combination = modality_combinations[c]
 
-            # TODO: hom vs not hom
-            # yield modality_combination[:6], sess.run(next_element_list[c])
-            yield modality_combination[:-5], sess.run(next_element_list[c])
-            # yield modality_combination[:-1], sess.run(next_element_list[c])
+            yield self.batch_generator_config[modality_combination]["modality_combination_clean"], sess.run(next_element_list[c])
+
+            # if self.use_homogeneous_batches:
+            #     yield modality_combination[:-5], sess.run(next_element_list[c])
+            # else:
+            #     yield modality_combination[:-1], sess.run(next_element_list[c])
+            #     # yield modality_combination[:-1], sess.run(next_element_list[c])
+            #     # yield modality_combination[:6], sess.run(next_element_list[c])

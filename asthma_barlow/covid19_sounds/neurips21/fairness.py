@@ -3,7 +3,10 @@ import scipy.stats as spst
 from skmultilearn.model_selection import IterativeStratification
 
 
-def fair_split(data_array, global_index, sample_distribution_per_fold):
+# Stratified partitioning of a metadata array.
+def fair_split(data_array,  # Metadata array. Similar to an one-hot multilabel label array.
+               global_index,  # The metadata array refers to the core set with all 3 modalities. The global index maps the core set to the index of all users.
+               sample_distribution_per_fold):  # Split percentages.
     skf = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=sample_distribution_per_fold)
     for index_0, index_1 in skf.split(data_array, data_array):
         data_array_0, data_array_1 = data_array[index_0], data_array[index_1]

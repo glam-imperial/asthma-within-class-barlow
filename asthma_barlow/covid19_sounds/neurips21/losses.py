@@ -1,7 +1,6 @@
 import collections
 
 import numpy as np
-import tensorflow as tf
 
 from common.losses import _calculate_weighted_binary_crossentropy,\
     _calculate_weighted_binary_softmax_crossentropy, _calculate_barlow_twins_loss, _calculate_norm_loss
@@ -12,11 +11,10 @@ def get_loss(pred_train,
              output_type_list,
              other_outputs,
              pos_weights,
-             barlow_twins):
+             barlow_twins,
+             ssl_regulariser,
+             ssl_type):
     global_pooling = model_configuration["global_pooling"]
-    kl_loss_regulariser = 0.0
-    is_bayesian = False
-    use_epistemic_smoothing = False
     print(pos_weights)
 
     def loss_factory(modality_combination,
@@ -57,9 +55,13 @@ def get_loss(pred_train,
             else:
                 raise ValueError
 
-            if barlow_twins:
-                loss_value = loss_value + _calculate_barlow_twins_loss(embedding=pred_train[modality_combination]["embedding"]) * weight * 0.1
-                # loss_value = loss_value + _calculate_norm_loss(embedding=pred_train[modality_combination]["embedding"]) * weight * 0.1
+            if ssl_regulariser > 0.0:
+                if ssl_type == "barlow_twins":
+                    loss_value = loss_value + _calculate_barlow_twins_loss(embedding=pred_train[modality_combination]["embedding"]) * weight * ssl_regulariser
+                elif ssl_type == "norm":
+                    loss_value = loss_value + _calculate_norm_loss(embedding=pred_train[modality_combination]["embedding"]) * weight * ssl_regulariser
+                else:
+                    raise ValueError("Invalid SSL method name.")
 
             return loss_value
         return loss_instance
@@ -172,7 +174,7 @@ def get_loss(pred_train,
                 if target == "asthma":
                     weight = 1.0
                 else:
-                    weight = 0.2 / 13.0
+                    weight = 0.2 / 14.0
             elif target in ["age",
                             "sex",
                             "smoking",
@@ -182,18 +184,18 @@ def get_loss(pred_train,
                 task_type = "multiclass_classification"
                 pos_weight = pos_weights[target]
                 pos_weight = np.nan_to_num(pos_weight, posinf=0.0)
-                weight = 0.2 / 13.0
+                weight = 0.2 / 14.0
             else:
                 raise ValueError
 
-            if "single" in modality_combination:
-                m_n = 0
-            elif "double" in modality_combination:
-                m_n = 0
-            elif "triple" in modality_combination:
-                m_n = 0
-            else:
-                raise ValueError
+            # if "single" in modality_combination:
+            #     m_n = 0
+            # elif "double" in modality_combination:
+            #     m_n = 0
+            # elif "triple" in modality_combination:
+            #     m_n = 0
+            # else:
+            #     raise ValueError
 
             # if t_i == 0:
             #     layer_name = "ff_" + repr(m_n)

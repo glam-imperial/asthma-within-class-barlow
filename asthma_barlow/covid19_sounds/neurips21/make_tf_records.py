@@ -47,12 +47,12 @@ METADATA_FILEPATH = dict()
 for recording_source in ["web", "android", "ios"]:
     METADATA_FILEPATH[recording_source] = preprocessing_utils.DATA_FOLDER + "/all_metadata" + "/results_raw_20210426_lan_yamnet_" + recording_source + "_noloc.csv"
 
-
 #####################################################################################################################
+# ANDROID + IOS
 # Find asthmatic and non-asthmatic user related metadata.
 #####################################################################################################################
 # Dictionary from user to a list of metadata. Done in order to clean-up metadata.
-# It's for android and web users only.
+# It's for android and ios users only.
 user_metadata = collections.defaultdict(list)
 
 # Count users per case.
@@ -221,6 +221,7 @@ assert len(common_non_asthma_user_set) == len(non_asthma_user_set["all_three"])
 print("Common asthmatic:", len(common_asthma_user_set))
 print("Common non-asthmatic:", len(common_non_asthma_user_set))
 
+# Print different types; including typos, variations. Has been used to form TYPES_STATS in preprocessing_utils.py
 # print(age_types)
 # print(sex_types)
 # print(med_history_types)
@@ -237,7 +238,7 @@ print("Common non-asthmatic:", len(common_non_asthma_user_set))
 # {'covid_tested': defaultdict(<class 'int'>, {None: 42, 'never': 2353, 'last14': 52, 'neverThinkHadCOVIDNever': 15034, 'pnts': 655, 'yes': 18, 'positiveOver14': 239, 'positiveLast14': 702, 'negativeNever': 3426, 'neverThinkHadCOVIDNow': 1940, 'neverThinkHadCOVIDLast14': 544, 'negativeOver14': 1324, 'over14': 23, 'neverThinkHadCOVIDOver14': 1439, 'negativeLast14': 772, 'no': 167}), 'sex': defaultdict(<class 'int'>, {'pnts': 378, None: 15, 'Male': 17822, 'Other': 63, 'Female': 10452}), 'symptoms': defaultdict(<class 'int'>, {None: 12006, 'never': 1, 'chills': 1364, 'drycough': 9113, 'wetcough': 3932, 'fever': 1551, 'pnts': 677, 'shortbreath': 2098, 'headache': 4020, 'smelltasteloss': 1026, 'muscleache': 2386, 'dizziness': 1156, 'runnyblockednose': 3796, 'tightness': 2123, 'sorethroat': 4655}), 'med_history': defaultdict(<class 'int'>, {None: 23086, 'asthma': 571, 'cystic': 76, 'hbp': 2522, 'heart': 196, 'otherHeart': 358, 'pnts': 878, 'diabetes': 741, 'lung': 271, 'stroke': 153, 'pulmonary': 70, 'organ': 43, 'long': 373, 'hiv': 166, 'longterm': 742, 'copd': 255, 'valvular': 188, 'cancer': 164, 'angina': 138}), 'age': defaultdict(<class 'int'>, {'90-': 18, '80-89': 64, '0-19': 2668, '70-79': 484, '60-69': 1497, '20-29': 6874, '30-39': 7558, '40-49': 5718, 'pnts': 666, '50-59': 3180, None: 3}), 'hospitalised': defaultdict(<class 'int'>, {None: 4, 'pnts': 237, 'no': 28237, 'yes': 252}), 'language': defaultdict(<class 'int'>, {'it': 7395, 'hi': 2, 'de': 1103, 'zh': 23, 'ro': 75, 'en': 14916, 'pt': 1514, 'fr': 644, 'None': 1, 'ru': 727, 'es': 1800, 'el': 530}), 'smoking': defaultdict(<class 'int'>, {None: 19, 'never': 15623, 'ecig': 330, 'ltOnce': 923, 'pnts': 655, 'ex': 5078, '21+': 230, '1to10': 3336, '11to20': 2536})}
 
 #####################################################################################################################
-# Check user metadata consistency.
+# Make metadata array for the common, all-three modality core user set.
 #####################################################################################################################
 # Make a list of all metadata types and give them a numerical index.
 TYPES = list()
@@ -252,16 +253,20 @@ for metadata_type in sorted(preprocessing_utils.TYPES_STATS.keys()):
 print(TYPES)
 print(TYPE_NAME_COLUMN_INDEX)
 
-
-# Make metadata array.
+# Initialise metadata array.
 all_three_user_metadata = {k: v for k, v in user_metadata.items() if (k in common_asthma_user_set) or (k in common_non_asthma_user_set)}
 metadata_array = np.empty(shape=(len(all_three_user_metadata.keys()), len(TYPES)), dtype=np.float32)
 user_ids_sorted = sorted(all_three_user_metadata.keys())
 
+# Populate metadata array.
+# First check user metadata consistency. Each time a user made a contribution, they may have submitted different metadata.
+# In some cases, a correction needs to be made. And we use the most commonly submitted info by the same user. (filtered_v)
 consistency_dict = collections.defaultdict(list)
 for uid_i, uid in enumerate(user_ids_sorted):
     metadata_list = all_three_user_metadata[uid]
 
+    # In these cases, we use the filtered value, even though someone may presumably change category.
+    # Even though the category may change, the most commonly submitted info is useful in the data partitioning.
     for metadata_name in ["age",
                           "sex",
                           "smoking",
@@ -271,6 +276,12 @@ for uid_i, uid in enumerate(user_ids_sorted):
 
         metadata_array[uid_i, TYPE_NAME_COLUMN_INDEX[filtered_v]] = 1.0
 
+    # In these cases, we use the filtered value. There is a potential issue here:
+    # Some users may be COVID-tested for half of the measurements and not tested for the other.
+    # We treat a user as representative of the most common type, and disregard the other in terms of partitioning.
+    # (But the correct labels per measurement are stored in the tf records files at the end, for purposes of training and evaluation.)
+    # This means that the users in the partitions can still contain measurements with different metadata than the ones assumed here.
+    # Since this study is focused on explaining-away all other metadata that is not asthma, we believe that this is 100% in line with out assumptions.
     for metadata_name in ["covid_tested",
                           "hospitalised",
                           "recording_source"]:
@@ -280,6 +291,10 @@ for uid_i, uid in enumerate(user_ids_sorted):
         for filtered_v, count in count_v.items():
             metadata_array[uid_i, TYPE_NAME_COLUMN_INDEX[filtered_v]] = count
 
+    # Here, the filtered value is in [0, 1] per medical condition name. Either doesn't have, or have.
+    # We require 100% levels of consistency to add a user as having a medical condition.
+    # (Even though presumably they may be diagnosed in-between measurements.)
+    # E.g., asthma is 100% consistent for all users (if printed, you can verify).
     consistency_list = preprocessing_utils.check_consistency_list(metadata_list, "med_history")
     for m_name_symptom, consistency, filtered_v, count_v in consistency_list:
         consistency_dict[m_name_symptom].append(consistency)
@@ -287,25 +302,29 @@ for uid_i, uid in enumerate(user_ids_sorted):
         if filtered_v == 1:
             metadata_array[uid_i, TYPE_NAME_COLUMN_INDEX[m_name_symptom]] = 1.0
 
+    # Not the same treatment for symptoms of COVID -- perfectly possible to have different symptoms per measurement.
     consistency_list = preprocessing_utils.check_consistency_list(metadata_list, "symptoms")
     for m_name_symptom, consistency, filtered_v, count_v in consistency_list:
         consistency_dict[m_name_symptom].append(consistency)
 
         metadata_array[uid_i, TYPE_NAME_COLUMN_INDEX[m_name_symptom]] = count_v[1]
 
+# Print this to see levels of consistency. They are all highly consistent.
 # for k, v in consistency_dict.items():
 #     print(k)
 #     print(statistics.mean(v))
 
 # print(metadata_array)
 
+# Binarise metadata array.
 metadata_array[metadata_array > 0.0] = 1.0
 
 metadata_df = pd.DataFrame(data=metadata_array,    # values
                            index=np.arange(metadata_array.shape[0]),    # 1st column as index
                            columns=TYPES)
 
-#### Asthma partitioning.
+#### User partitioning with fair metadata percentage mixture preservation.
+# There are many more non-asthmatic users, and so we
 asthma_global_index_train,\
 asthma_global_index_devel,\
 asthma_global_index_test, \
@@ -314,6 +333,7 @@ non_asthma_global_index_plus, \
 non_asthma_global_index_devel,\
 non_asthma_global_index_test = fairness.partitioning(metadata_df)
 
+# Check if any indices were lost.
 # bbb = set(asthma_global_index_train).union(set(asthma_global_index_devel),
 #                                            set(asthma_global_index_test),
 #                                            set(non_asthma_global_index_train),
@@ -325,9 +345,13 @@ non_asthma_global_index_test = fairness.partitioning(metadata_df)
 
 #####################################################################################################################
 # WEB
+# (similar preprocessing for the web-app collected data as with the android + ios data.)
+# There is only 1 user ID for web collection. We must use all WEB users on a single partition.
+# Either as training, or as an evaluation set.
 #####################################################################################################################
 web_user_metadata = collections.defaultdict(list)
 
+# Count users per case.
 web_asthma_user_counts = dict()
 web_asthma_user_counts["total"] = 0
 web_asthma_user_counts["all_three"] = 0
@@ -342,6 +366,7 @@ web_non_asthma_user_counts["voice"] = 0
 web_non_asthma_user_counts["cough"] = 0
 web_non_asthma_user_counts["breath"] = 0
 
+# Append users per case.
 web_asthma_users = dict()
 web_asthma_users["total"] = list()
 web_asthma_users["all_three"] = list()
@@ -356,6 +381,7 @@ web_non_asthma_users["voice"] = list()
 web_non_asthma_users["cough"] = list()
 web_non_asthma_users["breath"] = list()
 
+# Read metadata file.
 web_metadata_df = pd.read_csv(METADATA_FILEPATH["web"],
                               delimiter=";")
 # web_counter = 0
@@ -380,7 +406,7 @@ for index, row in web_metadata_df.iterrows():
     metadata_u["recording_source"] = "web"
 
     # uid = row["Uid"] + repr(web_counter)
-    uid = row["Uid"]
+    uid = row["Uid"]  # for web data collection, we do not have user identifiers. They are all under a single ID.
     # web_counter += 1
 
     web_user_metadata[uid].append(metadata_u)
@@ -413,7 +439,7 @@ for index, row in web_metadata_df.iterrows():
                                                                                         web_non_asthma_users,
                                                                                         "web")
 
-
+# The counts are interesting.
 print("WEB")
 print("Asthmatic rows.")
 print("At least 1 modality:", web_asthma_user_counts["total"])
@@ -429,6 +455,7 @@ print("At least voice:", web_non_asthma_user_counts["voice"])
 print("At least cough:", web_non_asthma_user_counts["cough"])
 print("At least breath:", web_non_asthma_user_counts["breath"])
 
+# No web user information; just one user ID.
 web_asthma_user_set = dict()
 web_non_asthma_user_set = dict()
 web_asthma_user_set["total"] = set(web_asthma_users["total"])
@@ -481,7 +508,7 @@ print("Common non-asthmatic:", len(web_common_non_asthma_user_set))
 
 
 #####################################################################################################################
-# Make tf records function.
+# This is a python generator that yields Data Samples for tf record storage.
 #####################################################################################################################
 def get_generator(dataset_dict,
                   audio_folder):
@@ -494,7 +521,7 @@ def get_generator(dataset_dict,
     uid_to_numerical = dict()
     # web_counter = 0
 
-    wav2vec2_model = preprocessing_utils.get_wav2vec2_model()
+    # wav2vec2_model = preprocessing_utils.get_wav2vec2_model()
 
     metadata_df = dict()
     for recording_source in ["android", "ios", "web"]:
@@ -535,6 +562,7 @@ def get_generator(dataset_dict,
 
             has_asthma = "asthma" in med_history_list
 
+            # Check if a) metadata file claims that modality exists and b) if sound file exists.
             has_voice = preprocessing_utils.modality_exists(row,
                                                             "voice",
                                                             recording_source)
@@ -595,10 +623,10 @@ def get_generator(dataset_dict,
                     cough = librosa.load(subfolder_name + "/" + cough_filename, sr=16000)[0]
                 except FileNotFoundError:
                     cough = librosa.load(subfolder_name + "/" + cough_filename[:-4] + ".wav", sr=16000)[0]
-                # cough_x_dict = preprocessing_utils.get_features_and_stats(cough)
-                cough_x_dict = preprocessing_utils.get_features_and_stats(cough, wav2vec2_model)
-                # print(cough_x_dict["logmel_spectrogram"].shape)
-                print(cough_x_dict["wav2vec_embeddings"].shape)
+                cough_x_dict = preprocessing_utils.get_features_and_stats(cough)
+                # cough_x_dict = preprocessing_utils.get_features_and_stats(cough, wav2vec2_model)
+                print(cough_x_dict["logmel_spectrogram"].shape)
+                # print(cough_x_dict["wav2vec_embeddings"].shape)
                 cough_size_list.append(cough.size)
             else:
                 cough = None
@@ -607,10 +635,10 @@ def get_generator(dataset_dict,
                     breath = librosa.load(subfolder_name + "/" + breath_filename, sr=16000)[0]
                 except FileNotFoundError:
                     breath = librosa.load(subfolder_name + "/" + breath_filename[:-4] + ".wav", sr=16000)[0]
-                # breath_x_dict = preprocessing_utils.get_features_and_stats(breath)
-                breath_x_dict = preprocessing_utils.get_features_and_stats(breath, wav2vec2_model)
-                # print(breath_x_dict["logmel_spectrogram"].shape)
-                print(breath_x_dict["wav2vec_embeddings"].shape)
+                breath_x_dict = preprocessing_utils.get_features_and_stats(breath)
+                # breath_x_dict = preprocessing_utils.get_features_and_stats(breath, wav2vec2_model)
+                print(breath_x_dict["logmel_spectrogram"].shape)
+                # print(breath_x_dict["wav2vec_embeddings"].shape)
                 breath_size_list.append(breath.size)
             else:
                 breath = None
@@ -619,29 +647,29 @@ def get_generator(dataset_dict,
                     voice = librosa.load(subfolder_name + "/" + voice_filename, sr=16000)[0]
                 except FileNotFoundError:
                     voice = librosa.load(subfolder_name + "/" + voice_filename[:-4] + ".wav", sr=16000)[0]
-                # voice_x_dict = preprocessing_utils.get_features_and_stats(voice)
-                voice_x_dict = preprocessing_utils.get_features_and_stats(voice, wav2vec2_model)
-                # print(voice_x_dict["logmel_spectrogram"].shape)
-                print(voice_x_dict["wav2vec_embeddings"].shape)
+                voice_x_dict = preprocessing_utils.get_features_and_stats(voice)
+                # voice_x_dict = preprocessing_utils.get_features_and_stats(voice, wav2vec2_model)
+                print(voice_x_dict["logmel_spectrogram"].shape)
+                # print(voice_x_dict["wav2vec_embeddings"].shape)
                 voice_size_list.append(voice.size)
             else:
                 voice = None
 
             x_dict = dict()
             if has_cough:
-                # x_dict["cough_logmel_spectrogram"] = cough_x_dict["logmel_spectrogram"]
+                x_dict["cough_logmel_spectrogram"] = cough_x_dict["logmel_spectrogram"]
                 # x_dict["cough_waveform"] = cough_x_dict["waveform"]
-                x_dict["cough_wav2vec_embeddings"] = cough_x_dict["wav2vec_embeddings"]
+                # x_dict["cough_wav2vec_embeddings"] = cough_x_dict["wav2vec_embeddings"]
 
             if has_breath:
-                # x_dict["breath_logmel_spectrogram"] = breath_x_dict["logmel_spectrogram"]
+                x_dict["breath_logmel_spectrogram"] = breath_x_dict["logmel_spectrogram"]
                 # x_dict["breath_waveform"] = breath_x_dict["waveform"]
-                x_dict["breath_wav2vec_embeddings"] = breath_x_dict["wav2vec_embeddings"]
+                # x_dict["breath_wav2vec_embeddings"] = breath_x_dict["wav2vec_embeddings"]
 
             if has_voice:
-                # x_dict["voice_logmel_spectrogram"] = voice_x_dict["logmel_spectrogram"]
+                x_dict["voice_logmel_spectrogram"] = voice_x_dict["logmel_spectrogram"]
                 # x_dict["voice_waveform"] = voice_x_dict["waveform"]
-                x_dict["voice_wav2vec_embeddings"] = voice_x_dict["wav2vec_embeddings"]
+                # x_dict["voice_wav2vec_embeddings"] = voice_x_dict["wav2vec_embeddings"]
 
             y_dict = dict()
 
@@ -679,42 +707,42 @@ def get_generator(dataset_dict,
 
             support_dict = dict()
             if has_cough:
-                support_dict["cough_wav2vec_embeddings_support"] = np.ones(
-                    (x_dict["cough_wav2vec_embeddings"].shape[0], 1),
-                    dtype=np.float32)
-                if cough_x_dict["unsupport"] > 0:
-                    support_dict["cough_wav2vec_embeddings_support"][-cough_x_dict["unsupport"]:, :] = 0.0
-                print(x_dict["cough_wav2vec_embeddings"].shape)
-                # support_dict["cough_logmel_spectrogram_support"] = np.ones((x_dict["cough_logmel_spectrogram"].shape[0], 1),
-                #                                                            dtype=np.float32)
+                # support_dict["cough_wav2vec_embeddings_support"] = np.ones(
+                #     (x_dict["cough_wav2vec_embeddings"].shape[0], 1),
+                #     dtype=np.float32)
                 # if cough_x_dict["unsupport"] > 0:
-                #     support_dict["cough_logmel_spectrogram_support"][-cough_x_dict["unsupport"]:, :] = 0.0
-                # print(x_dict["cough_logmel_spectrogram"].shape)
+                #     support_dict["cough_wav2vec_embeddings_support"][-cough_x_dict["unsupport"]:, :] = 0.0
+                # print(x_dict["cough_wav2vec_embeddings"].shape)
+                support_dict["cough_logmel_spectrogram_support"] = np.ones((x_dict["cough_logmel_spectrogram"].shape[0], 1),
+                                                                           dtype=np.float32)
+                if cough_x_dict["unsupport"] > 0:
+                    support_dict["cough_logmel_spectrogram_support"][-cough_x_dict["unsupport"]:, :] = 0.0
+                print(x_dict["cough_logmel_spectrogram"].shape)
             if has_breath:
-                support_dict["breath_wav2vec_embeddings_support"] = np.ones(
-                    (x_dict["breath_wav2vec_embeddings"].shape[0], 1),
-                    dtype=np.float32)
-                if breath_x_dict["unsupport"] > 0:
-                    support_dict["breath_wav2vec_embeddings_support"][-breath_x_dict["unsupport"]:, :] = 0.0
-                print(x_dict["breath_wav2vec_embeddings"].shape)
-                # support_dict["breath_logmel_spectrogram_support"] = np.ones(
-                #     (x_dict["breath_logmel_spectrogram"].shape[0], 1),
+                # support_dict["breath_wav2vec_embeddings_support"] = np.ones(
+                #     (x_dict["breath_wav2vec_embeddings"].shape[0], 1),
                 #     dtype=np.float32)
                 # if breath_x_dict["unsupport"] > 0:
-                #     support_dict["breath_logmel_spectrogram_support"][-breath_x_dict["unsupport"]:, :] = 0.0
-                # print(x_dict["breath_logmel_spectrogram"].shape)
-            if has_voice:
-                support_dict["voice_wav2vec_embeddings_support"] = np.ones(
-                    (x_dict["voice_wav2vec_embeddings"].shape[0], 1),
+                #     support_dict["breath_wav2vec_embeddings_support"][-breath_x_dict["unsupport"]:, :] = 0.0
+                # print(x_dict["breath_wav2vec_embeddings"].shape)
+                support_dict["breath_logmel_spectrogram_support"] = np.ones(
+                    (x_dict["breath_logmel_spectrogram"].shape[0], 1),
                     dtype=np.float32)
-                if voice_x_dict["unsupport"] > 0:
-                    support_dict["voice_wav2vec_embeddings_support"][-voice_x_dict["unsupport"]:, :] = 0.0
-                print(x_dict["voice_wav2vec_embeddings"].shape)
-                # support_dict["voice_logmel_spectrogram_support"] = np.ones((x_dict["voice_logmel_spectrogram"].shape[0], 1),
-                #                                                            dtype=np.float32)
+                if breath_x_dict["unsupport"] > 0:
+                    support_dict["breath_logmel_spectrogram_support"][-breath_x_dict["unsupport"]:, :] = 0.0
+                print(x_dict["breath_logmel_spectrogram"].shape)
+            if has_voice:
+                # support_dict["voice_wav2vec_embeddings_support"] = np.ones(
+                #     (x_dict["voice_wav2vec_embeddings"].shape[0], 1),
+                #     dtype=np.float32)
                 # if voice_x_dict["unsupport"] > 0:
-                #     support_dict["voice_logmel_spectrogram_support"][-voice_x_dict["unsupport"]:, :] = 0.0
-                # print(x_dict["voice_logmel_spectrogram"].shape)
+                #     support_dict["voice_wav2vec_embeddings_support"][-voice_x_dict["unsupport"]:, :] = 0.0
+                # print(x_dict["voice_wav2vec_embeddings"].shape)
+                support_dict["voice_logmel_spectrogram_support"] = np.ones((x_dict["voice_logmel_spectrogram"].shape[0], 1),
+                                                                           dtype=np.float32)
+                if voice_x_dict["unsupport"] > 0:
+                    support_dict["voice_logmel_spectrogram_support"][-voice_x_dict["unsupport"]:, :] = 0.0
+                print(x_dict["voice_logmel_spectrogram"].shape)
 
             sample = Sample(name=name,
                             id_dict=id_dict,
@@ -743,53 +771,58 @@ web_common_non_asthma_user_set = sorted(web_common_non_asthma_user_set)
 # random.shuffle(common_asthma_user_set)
 # random.shuffle(common_non_asthma_user_set)
 
-naive_dataset = dict()
+user_to_partition = dict()
+# Naive dataset partitioning.
 # for user in common_asthma_user_set[0:1080]:
-#     naive_dataset[user] = "train"
+#     user_to_partition[user] = "train"
 # for user in common_asthma_user_set[1080:1580]:
-#     naive_dataset[user] = "devel"
+#     user_to_partition[user] = "devel"
 # for user in common_asthma_user_set[1580:2080]:
-#     naive_dataset[user] = "test"
+#     user_to_partition[user] = "test"
 # for user in common_non_asthma_user_set[0:2160]:
-#     naive_dataset[user] = "train"
+#     user_to_partition[user] = "train"
 # for user in common_non_asthma_user_set[2160:3160]:
-#     naive_dataset[user] = "devel"
+#     user_to_partition[user] = "devel"
 # for user in common_non_asthma_user_set[3160:4160]:
-#     naive_dataset[user] = "test"
+#     user_to_partition[user] = "test"
 
+# Fair dataset partitioning.
 user_ids_sorted = np.array(user_ids_sorted)
 
 for user in asthma_user_set["total"]:
-    naive_dataset[user] = "pos_train"
+    user_to_partition[user] = "pos_train"
 for user in non_asthma_user_set["total"]:
-    naive_dataset[user] = "neg_plus"
+    user_to_partition[user] = "neg_plus"
 
 for user in user_ids_sorted[asthma_global_index_train]:
-    naive_dataset[user] = "pos_train"
+    user_to_partition[user] = "pos_train"
 for user in user_ids_sorted[asthma_global_index_devel]:
-    naive_dataset[user] = "pos_devel"
+    user_to_partition[user] = "pos_devel"
 for user in user_ids_sorted[asthma_global_index_test]:
-    naive_dataset[user] = "pos_test"
+    user_to_partition[user] = "pos_test"
 for user in user_ids_sorted[non_asthma_global_index_train]:
-    naive_dataset[user] = "neg_train"
+    user_to_partition[user] = "neg_train"
 for user in user_ids_sorted[non_asthma_global_index_plus]:
-    naive_dataset[user] = "neg_plus"
+    user_to_partition[user] = "neg_plus"
 for user in user_ids_sorted[non_asthma_global_index_devel]:
-    naive_dataset[user] = "neg_devel"
+    user_to_partition[user] = "neg_devel"
 for user in user_ids_sorted[non_asthma_global_index_test]:
-    naive_dataset[user] = "neg_test"
+    user_to_partition[user] = "neg_test"
 
 # Use web recordings. # Only one "user" for web, they get "pos" or "neg" tag depending on row metadata.
 # for user in web_common_asthma_user_set[0:178]:
 for user in web_common_asthma_user_set[:]:
-    naive_dataset[user] = "web"
+    user_to_partition[user] = "web"
 # for user in web_common_non_asthma_user_set[0:178]:
 for user in web_common_non_asthma_user_set[:]:
-    naive_dataset[user] = "web"
+    user_to_partition[user] = "web"
 
 #####################################################################################################################
 # Make tf records.
 #####################################################################################################################
+# Make all folders for tf records to be stored in.
+# "pos_train" implies positive training sample instances with all 3 modalities present.
+# "neg_devel_only_voice" implies negative development samples instances where only the voice modality is present.
 # for partition in ["train", "train_only_voice", "train_only_cough", "train_only_breath",
 #                   "train_only_voice_cough", "train_only_voice_breath", "train_only_cough_breath",
 #                   "plus_only_voice", "plus_only_cough", "plus_only_breath",
@@ -812,13 +845,15 @@ for partition in ["train", "plus", "devel", "test", "web"]:
             if not os.path.exists(tfrecords_folder):
                 os.makedirs(tfrecords_folder)
 
-
-generator = get_generator(naive_dataset,
+# Generator that reads the data samples one by one.
+generator = get_generator(user_to_partition,
                           preprocessing_utils.AUDIO_FOLDER)
+# Data normalisation generator.
 normaliser = normalise.Normaliser(sample_iterable=generator,
                                   normalisation_scope="sample")
 normalised_sample_generator = normaliser.generate_normalised_samples()
 
+# Storing data as tf records.
 tfrecord_creator = tfrecord_creator.TFRecordCreator(tf_records_folder=configuration.TFRECORDS_FOLDER,
                                                     sample_iterable=normalised_sample_generator,
                                                     are_test_labels_available=True,

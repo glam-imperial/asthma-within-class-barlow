@@ -1,6 +1,6 @@
 ---
   # General.
-  method_string: "all-voice-VGGish-avg-opt_thresh"
+  method_string: "all-cough-VGGish-avg-opt_thresh"
   model_path: ""
   results_summary_path: ""
   configuration_dict: ""
@@ -42,12 +42,12 @@
   ssl_type: None
   model_configuration:
     input_type_list:
-      - voice_logmel_spectrogram
-      - voice_logmel_spectrogram_support
+#      - voice_logmel_spectrogram
+#      - voice_logmel_spectrogram_support
 #      - breath_logmel_spectrogram
 #      - breath_logmel_spectrogram_support
-#      - cough_logmel_spectrogram
-#      - cough_logmel_spectrogram_support
+      - cough_logmel_spectrogram
+      - cough_logmel_spectrogram_support
     output_type_list:
       - asthma
     core_model: audioset-VGGish

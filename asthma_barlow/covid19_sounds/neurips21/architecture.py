@@ -1,10 +1,7 @@
 import tensorflow as tf
 
-from common.models.audio_core_blocks import StackedRNNBlock, \
-    SEResNet, \
-    CNN14, \
-    VGGish, \
-SEResNetish
+from common.models.audio_core_blocks import SEResNet, \
+    SEResNetish
 from common.models.vggish_keras import vggish as vgk
 from common.models.embedding_pooling import AttentionGlobalPooling, AverageGlobalPooling
 from common.models.top_blocks import FeedForwardBlock
@@ -13,10 +10,6 @@ from covid19_sounds.neurips21.model import model_call
 
 def get_model(name_to_metadata,
               model_configuration):
-    # The below configuration stuff are defined in the YAML files.
-    bottom_model = model_configuration["bottom_model"]
-    bottom_model_configuration = model_configuration["bottom_model_configuration"]
-
     core_model = model_configuration["core_model"]
     core_model_configuration = model_configuration["core_model_configuration"]
 
@@ -87,37 +80,37 @@ def get_model(name_to_metadata,
 
     custom_objects = dict()
 
-    # Define core model. ["SEResNet", "SeResNetish", "audionet-VGGish", "VGGish", "VGGish-alt"]
+    # Define core model. ["SEResNet", "SeResNetish", "audioset-VGGish"]
     if core_model == "SEResNet":
         core_model_configuration_effective = {k: v for k, v in core_model_configuration.items()}
-        seresnet = list()
+        core_model_keras = list()
         for i, modality in enumerate(["voice", "breath", "cough"]):
             core_model_configuration_effective["name"] = "seresnet_core_" + modality
-            seresnet.append(SEResNet(**core_model_configuration))
+            core_model_keras.append(SEResNet(**core_model_configuration))
         embedd = None
     elif core_model == "SEResNetish":
         core_model_configuration_effective = {k: v for k, v in core_model_configuration.items()}
-        seresnet = list()
+        core_model_keras = list()
         embedd = list()
         for i, modality in enumerate(["voice", "breath", "cough"]):
             core_model_configuration_effective["name"] = "resnetish_core_" + modality
-            seresnet.append(SEResNetish(**core_model_configuration_effective))
+            core_model_keras.append(SEResNetish(**core_model_configuration_effective))
             embedd.append(FeedForwardBlock(layer_units=[4096, 4096],
                                            outputs_list=[128, ],
                                            name="ff_embed_" + modality))
-    elif core_model == "audionet-VGGish":
-        seresnet = list()
+    elif core_model == "audioset-VGGish":
+        core_model_keras = list()
         for i, modality in enumerate(["voice", "breath", "cough"]):
-            seresnet.append(vgk.VGGish(pump=None,
-                                  input_shape=(96, 64, 1),
-                                  include_top=True,
-                                  pooling=None,
-                                  weights="audioset",
-                                  name="vggish_core_" + modality,
-                                  compress=False))
+            core_model_keras.append(vgk.VGGish(pump=None,
+                                               input_shape=(96, 64, 1),
+                                               include_top=True,
+                                               pooling=None,
+                                               weights="audioset",
+                                               name="vggish_core_" + modality,
+                                               compress=False))
         embedd = None
     elif core_model == "VGGish":
-        seresnet = vgk.VGGish(pump=None,
+        core_model_keras = vgk.VGGish(pump=None,
                               input_shape=(96, 64, 1),
                               include_top=True,
                               pooling=None,
@@ -125,27 +118,8 @@ def get_model(name_to_metadata,
                               name="vggish_core",
                               compress=False)
         embedd = None
-    elif core_model == "VGGish-alt":
-        seresnet = list()
-        embedd = list()
-        for i, modality in enumerate(["voice", "breath", "cough"]):
-            core_model_configuration_effective = {k: v for k, v in core_model_configuration.items()}
-            core_model_configuration_effective["name"] = "vggish_core_" + repr(i)
-            seresnet.append(VGGish(**core_model_configuration_effective))
-            embedd.append(FeedForwardBlock(layer_units=[4096, 4096],
-                                           outputs_list=[128, ],
-                                           name="ff_embed_" + modality))
-    elif core_model == "FF":
-        seresnet = list()
-        for i, modality in enumerate(["voice", "breath", "cough"]):
-            seresnet.append(FeedForwardBlock(layer_units=[512, ],
-                                             outputs_list=[128, ],
-                                             name="ff_embed_" + modality))
-        embedd = None
     else:
         raise ValueError("Invalid core_model type.")
-
-    stacked_rnn_block = StackedRNNBlock(rnn_units_list=[128, ])
 
     # Multi-head attention embedding pooling.
     if global_pooling == "AttentionGlobalPooling":
@@ -166,22 +140,23 @@ def get_model(name_to_metadata,
     else:
         raise ValueError("Invalid global_pooling type.")
 
-    meta_cleaner = FeedForwardBlock(layer_units=[96, ],
-                                    outputs_list=[1, ],
-                                    name="meta_cleaner")
+    # meta_cleaner = FeedForwardBlock(layer_units=[96, ],
+    #                                 outputs_list=[1, ],
+    #                                 name="meta_cleaner")
+    meta_cleaner = None
 
-    cdpl = FeedForwardBlock(layer_units=[128, ],
-                            outputs_list=[128, ],
-                            name="cdpl")
+    # cdpl = FeedForwardBlock(layer_units=[128, ],
+    #                         outputs_list=[128, ],
+    #                         name="cdpl")
+    cdpl = None
 
     # Propagate inputs.
     # Same core model per modality.
     net_train_dict, \
     net_test_dict = model_call(input_layers_dict,
                                core_model,
-                               seresnet,
+                               core_model_keras,
                                embedd,
-                               stacked_rnn_block,
                                attention_global_pooling,
                                feed_forward_block,
                                meta_cleaner,
@@ -204,30 +179,6 @@ def get_model(name_to_metadata,
             prediction_test[modality_availability][output_type] = net_test_dict[modality_availability][o_i]
             prediction_test[modality_availability][output_type + "_prob"] = tf.nn.sigmoid(net_test_dict[modality_availability][o_i])
 
-    # prediction_train = dict()
-    # prediction_train["single"] = dict()
-    # prediction_train["double"] = dict()
-    # prediction_train["triple"] = dict()
-    # for o_i, output_type in enumerate(output_type_list):
-    #     prediction_train["single"][output_type] = net_train_dict["single"][o_i]
-    #     prediction_train["double"][output_type] = net_train_dict["double"][o_i]
-    #     prediction_train["triple"][output_type] = net_train_dict["triple"][o_i]
-    #     prediction_train["single"][output_type + "_prob"] = tf.nn.sigmoid(net_train_dict["single"][o_i])
-    #     prediction_train["double"][output_type + "_prob"] = tf.nn.sigmoid(net_train_dict["double"][o_i])
-    #     prediction_train["triple"][output_type + "_prob"] = tf.nn.sigmoid(net_train_dict["triple"][o_i])
-    #
-    # prediction_test = dict()
-    # prediction_test["single"] = dict()
-    # prediction_test["double"] = dict()
-    # prediction_test["triple"] = dict()
-    # for o_i, output_type in enumerate(output_type_list):
-    #     prediction_test["single"][output_type] = net_test_dict["single"][o_i]
-    #     prediction_test["double"][output_type] = net_test_dict["double"][o_i]
-    #     prediction_test["triple"][output_type] = net_test_dict["triple"][o_i]
-    #     prediction_test["single"][output_type + "_prob"] = tf.nn.sigmoid(net_test_dict["single"][o_i])
-    #     prediction_test["double"][output_type + "_prob"] = tf.nn.sigmoid(net_test_dict["double"][o_i])
-    #     prediction_test["triple"][output_type + "_prob"] = tf.nn.sigmoid(net_test_dict["triple"][o_i])
-
     keras_model_train = dict()
     keras_model_test = dict()
 
@@ -239,18 +190,12 @@ def get_model(name_to_metadata,
         keras_model_train[modality_availability] = tf.keras.Model(
             inputs=input_layers_dict[modality_availability],
             outputs=model_outputs)
-        # keras_model_test[modality_availability] = tf.keras.Model(
-        #     inputs=input_layers_dict[modality_availability],
-        #     outputs=model_outputs)
 
     for modality_availability in modality_availabilities:
         model_outputs = list()
         for o_i, output_type in enumerate(output_type_list):
             model_outputs.append(prediction_test[modality_availability][output_type])
 
-        # keras_model_train[modality_availability] = tf.keras.Model(
-        #     inputs=input_layers_dict[modality_availability],
-        #     outputs=model_outputs)
         keras_model_test[modality_availability] = tf.keras.Model(
             inputs=input_layers_dict[modality_availability],
             outputs=model_outputs)

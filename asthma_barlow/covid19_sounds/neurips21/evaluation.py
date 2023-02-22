@@ -1,6 +1,6 @@
 from common.evaluation.monitor import PerformanceMonitorVirtual
-from common.evaluation.measures import get_binary_classification_measures, get_multiclass_classification_measures
-from variational.activations import sigmoid_moments_np
+from common.evaluation.measures import get_binary_classification_measures,\
+    get_multiclass_classification_measures
 
 
 class PerformanceMonitor(PerformanceMonitorVirtual):
@@ -25,37 +25,20 @@ class PerformanceMonitor(PerformanceMonitorVirtual):
     def get_measures(self,
                      items,
                      partition):
-        if "bayesian" in self.model_configuration.keys():
-            is_bayesian = True
-        else:
-            is_bayesian = False
-
         measures = dict()
 
-        if is_bayesian:
-            pred = sigmoid_moments_np(items["asthma"]["pred"][:, :1],
-                                      items["asthma"]["pred"][:, 1:])
+        print(items["asthma"]["pred"].shape)
 
-            measures["asthma"] = get_binary_classification_measures(true=items["asthma"]["true"][:, 0],
-                                                                    pred=pred[:, 0],
-                                                                    are_logits=False)
-
-            # TODO: Categories for Bayesian.
-
+        if partition == "test":
+            optimal_threshold = self.best_optimal_threshold["asthma"]["au_pr"]
         else:
-            print(items["asthma"]["pred"].shape)
+            optimal_threshold = None
 
-            if partition == "test":
-                optimal_threshold = self.best_optimal_threshold["asthma"]["au_pr"]
-            else:
-                optimal_threshold = None
-
-            measures["asthma"],\
-            optimal_threshold = get_binary_classification_measures(true=items["asthma"]["true"][:, 0],
-                                                                   pred=items["asthma"]["pred"][:, 0],
-                                                                   # pred=items["asthma"]["pred"][:, 1],
-                                                                   are_logits=True,
-                                                                   optimal_threshold=optimal_threshold)
+        measures["asthma"], \
+        optimal_threshold = get_binary_classification_measures(true=items["asthma"]["true"][:, 0],
+                                                               pred=items["asthma"]["pred"][:, 0],
+                                                               are_logits=True,
+                                                               optimal_threshold=optimal_threshold)
 
         self.measures[partition] = measures
 
