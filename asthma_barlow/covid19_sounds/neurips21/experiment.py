@@ -91,12 +91,6 @@ def experiment_run(config_dict):
                                    "cough_logmel_spectrogram",
                                    "cough_logmel_spectrogram_support",
                                    ]
-            # input_type_list_eff = ["cough_wav2vec_embeddings",
-            #                        "cough_wav2vec_embeddings_support",
-            #                        "breath_wav2vec_embeddings",
-            #                        "breath_wav2vec_embeddings_support",
-            #                        "voice_wav2vec_embeddings",
-            #                        "voice_wav2vec_embeddings_support"]
             het_b_g_test_all_three_obj = HeterogeneousBatchGenerator(tf_records=tfrecords_folder,
                                                                      is_training=False,
                                                                      partition="test",
@@ -112,8 +106,6 @@ def experiment_run(config_dict):
             het_b_g_test_all_three = het_b_g_test_all_three_obj.get_tf_dataset()
             input_type_list_eff = ["voice_logmel_spectrogram",
                                    "voice_logmel_spectrogram_support"]
-            # input_type_list_eff = ["voice_wav2vec_embeddings",
-            #                        "voice_wav2vec_embeddings_support"]
             het_b_g_test_all_voice_obj = HeterogeneousBatchGenerator(tf_records=tfrecords_folder,
                                                                      is_training=False,
                                                                      partition="test",
@@ -129,8 +121,6 @@ def experiment_run(config_dict):
             het_b_g_test_all_voice = het_b_g_test_all_voice_obj.get_tf_dataset()
             input_type_list_eff = ["breath_logmel_spectrogram",
                                    "breath_logmel_spectrogram_support"]
-            # input_type_list_eff = ["breath_wav2vec_embeddings",
-            #                        "breath_wav2vec_embeddings_support"]
             het_b_g_test_all_breath_obj = HeterogeneousBatchGenerator(tf_records=tfrecords_folder,
                                                                       is_training=False,
                                                                       partition="test",
@@ -146,8 +136,6 @@ def experiment_run(config_dict):
             het_b_g_test_all_breath = het_b_g_test_all_breath_obj.get_tf_dataset()
             input_type_list_eff = ["cough_logmel_spectrogram",
                                    "cough_logmel_spectrogram_support"]
-            # input_type_list_eff = ["cough_wav2vec_embeddings",
-            #                        "cough_wav2vec_embeddings_support"]
             het_b_g_test_all_cough_obj = HeterogeneousBatchGenerator(tf_records=tfrecords_folder,
                                                                      is_training=False,
                                                                      partition="test",
@@ -199,7 +187,6 @@ def experiment_run(config_dict):
 
             optimizer = tf.keras.optimizers.Adam(learning_rate=initial_learning_rate)
 
-            # for modality_combination in ["single", "double", "triple"]:
             for modality_combination in ["single_voice",
                                          "single_breath",
                                          "single_cough",

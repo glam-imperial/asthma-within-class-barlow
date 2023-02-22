@@ -58,8 +58,6 @@
       use_tc: False
       use_ds: False
       pool_type: max
-    global_pooling: AttentionGlobalPooling  # [Attention, LinearSoftmax, Average, Max, AvgMax_PANN, MaxPrediction, VGG16Top]
-    global_pooling_configuration: None
     top_model: FeedForwardBlock
     top_model_configuration:
       layer_units: [96, ]

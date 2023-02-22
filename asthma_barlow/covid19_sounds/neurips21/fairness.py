@@ -39,11 +39,6 @@ def partitioning(metadata_df):
     # 0.005541467
 
     # Asthmatic.
-    # skf = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=[0.75, 0.25])
-    # for asthma_train_devel_index, asthma_test_index in skf.split(asthma_metadata_array, asthma_metadata_array):
-    #     print("TRAIN-DEVEL:", asthma_train_devel_index, "TEST:", asthma_test_index)
-    #     asthma_y_train_devel, asthma_y_test = asthma_metadata_array[asthma_train_devel_index], asthma_metadata_array[asthma_test_index]
-    #     asthma_global_index_train_devel, asthma_global_index_test = asthma_global_index[asthma_train_devel_index], asthma_global_index[asthma_test_index]
     asthma_y_train_devel,\
     asthma_y_test,\
     asthma_global_index_train_devel,\
@@ -55,12 +50,6 @@ def partitioning(metadata_df):
     print(asthma_y_test.shape)
     # print(asthma_y_test.mean(axis=0))
 
-    # skf = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=[0.67, 0.33])
-    # for asthma_train_index, asthma_devel_index in skf.split(asthma_y_train_devel, asthma_y_train_devel):
-    #     print("TRAIN:", asthma_train_index, "DEVEL:", asthma_devel_index)
-    #     asthma_y_train, asthma_y_devel = asthma_y_train_devel[asthma_train_index], asthma_y_train_devel[asthma_devel_index]
-    #     asthma_global_index_train, asthma_global_index_devel = asthma_global_index_train_devel[asthma_train_index], asthma_global_index_train_devel[
-    #         asthma_devel_index]
     asthma_y_train, \
     asthma_y_devel, \
     asthma_global_index_train, \
@@ -83,13 +72,6 @@ def partitioning(metadata_df):
     print(spst.pearsonr(asthma_y_test.mean(axis=0), asthma_y_train.mean(axis=0)))
 
     # Non asthmatic.
-    # skf = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=[0.9, 0.1])
-    # for non_asthma_train_devel_index, non_asthma_test_index in skf.split(non_asthma_metadata_array, non_asthma_metadata_array):
-    #     print("TRAIN-DEVEL:", non_asthma_train_devel_index, "TEST:", non_asthma_test_index)
-    #     non_asthma_y_train_devel, non_asthma_y_test = non_asthma_metadata_array[non_asthma_train_devel_index], non_asthma_metadata_array[
-    #         non_asthma_test_index]
-    #     non_asthma_global_index_train_devel, non_asthma_global_index_test = non_asthma_global_index[non_asthma_train_devel_index], \
-    #                                                                         non_asthma_global_index[non_asthma_test_index]
     non_asthma_y_devel_test_plus, \
     non_asthma_y_train, \
     non_asthma_global_index_devel_test_plus, \
@@ -101,14 +83,6 @@ def partitioning(metadata_df):
     print(non_asthma_y_train.shape)
     # print(non_asthma_y_train.mean(axis=0))
 
-    # skf = IterativeStratification(n_splits=2, order=2, sample_distribution_per_fold=[0.67, 0.33])  # 9
-    # for non_asthma_train_index, non_asthma_devel_index in skf.split(non_asthma_y_train_devel, non_asthma_y_train_devel):
-    #     print("TRAIN:", non_asthma_train_index, "DEVEL:", non_asthma_devel_index)
-    #     non_asthma_y_train, non_asthma_y_devel = non_asthma_y_train_devel[non_asthma_train_index], non_asthma_y_train_devel[
-    #         non_asthma_devel_index]
-    #     non_asthma_global_index_train, non_asthma_global_index_devel = non_asthma_global_index_train_devel[non_asthma_train_index], \
-    #                                                                    non_asthma_global_index_train_devel[
-    #                                                                        non_asthma_devel_index]
     non_asthma_y_plus, \
     non_asthma_y_devel_test, \
     non_asthma_global_index_plus, \

@@ -4,7 +4,7 @@ import os
 
 from common.metadata_util import process_metadata, filter_names
 
-PROJECT_FOLDER = '/data/PycharmProjects/AsthmaProject'
+PROJECT_FOLDER = '/data/PycharmProjects/asthma-within-class-barlow'
 
 DATA_FOLDER = "/data/Downloads/COVIDSounds/NeurIPS2021-data"
 AUDIO_FOLDER = DATA_FOLDER + "/covid19_data_0426"
@@ -215,17 +215,11 @@ def get_name_to_metadata(tf_names):
     name_to_metadata = dict()
     for name in [
                  "cough_logmel_spectrogram_support",
-                 # "cough_wav2vec_embeddings_support",
                  "breath_logmel_spectrogram_support",
-                 # "breath_wav2vec_embeddings_support",
                  "voice_logmel_spectrogram_support",
-                 # "voice_wav2vec_embeddings_support",
                  "cough_logmel_spectrogram",
-                 # "cough_wav2vec_embeddings",
                  "breath_logmel_spectrogram",
-                 # "breath_wav2vec_embeddings",
                  "voice_logmel_spectrogram",
-                 # "voice_wav2vec_embeddings",
                  # "segment_id",
                  # "version_id",
                  "asthma",
@@ -247,17 +241,11 @@ def get_name_to_metadata(tf_names):
         name_to_metadata[name] = dict()
 
     name_to_metadata["cough_logmel_spectrogram_support"]["numpy_shape"] = (None, 1)
-    # name_to_metadata["cough_wav2vec_embeddings_support"]["numpy_shape"] = (None, 1)
     name_to_metadata["breath_logmel_spectrogram_support"]["numpy_shape"] = (None, 1)
-    # name_to_metadata["breath_wav2vec_embeddings_support"]["numpy_shape"] = (None, 1)
     name_to_metadata["voice_logmel_spectrogram_support"]["numpy_shape"] = (None, 1)
-    # name_to_metadata["voice_wav2vec_embeddings_support"]["numpy_shape"] = (None, 1)
     name_to_metadata["cough_logmel_spectrogram"]["numpy_shape"] = (None, 128)
-    # name_to_metadata["cough_wav2vec_embeddings"]["numpy_shape"] = (None, 1024)
     name_to_metadata["breath_logmel_spectrogram"]["numpy_shape"] = (None, 128)
-    # name_to_metadata["breath_wav2vec_embeddings"]["numpy_shape"] = (None, 1024)
     name_to_metadata["voice_logmel_spectrogram"]["numpy_shape"] = (None, 128)
-    # name_to_metadata["voice_wav2vec_embeddings"]["numpy_shape"] = (None, 1024)
     # name_to_metadata["segment_id"]["numpy_shape"] = (1, )
     # name_to_metadata["version_id"]["numpy_shape"] = (1, )
     name_to_metadata["asthma"]["numpy_shape"] = (1, )
@@ -277,17 +265,11 @@ def get_name_to_metadata(tf_names):
     name_to_metadata["shortbreath"]["numpy_shape"] = (1, )
 
     name_to_metadata["cough_logmel_spectrogram_support"]["variable_type"] = "support"
-    # name_to_metadata["cough_wav2vec_embeddings_support"]["variable_type"] = "support"
     name_to_metadata["breath_logmel_spectrogram_support"]["variable_type"] = "support"
-    # name_to_metadata["breath_wav2vec_embeddings_support"]["variable_type"] = "support"
     name_to_metadata["voice_logmel_spectrogram_support"]["variable_type"] = "support"
-    # name_to_metadata["voice_wav2vec_embeddings_support"]["variable_type"] = "support"
     name_to_metadata["cough_logmel_spectrogram"]["variable_type"] = "x"
-    # name_to_metadata["cough_wav2vec_embeddings"]["variable_type"] = "x"
     name_to_metadata["breath_logmel_spectrogram"]["variable_type"] = "x"
-    # name_to_metadata["breath_wav2vec_embeddings"]["variable_type"] = "x"
     name_to_metadata["voice_logmel_spectrogram"]["variable_type"] = "x"
-    # name_to_metadata["voice_wav2vec_embeddings"]["variable_type"] = "x"
     # name_to_metadata["segment_id"]["variable_type"] = "id"
     # name_to_metadata["version_id"]["variable_type"] = "id"
     name_to_metadata["asthma"]["variable_type"] = "y"

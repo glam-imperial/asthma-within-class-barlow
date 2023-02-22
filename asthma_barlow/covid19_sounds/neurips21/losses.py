@@ -11,7 +11,6 @@ def get_loss(pred_train,
              output_type_list,
              other_outputs,
              pos_weights,
-             barlow_twins,
              ssl_regulariser,
              ssl_type):
     global_pooling = model_configuration["global_pooling"]

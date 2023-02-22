@@ -68,7 +68,6 @@ class HeterogeneousBatchGenerator:
             name_to_metadata_eff = dict()
             for name, metadata in name_to_metadata.items():
                 if "logmel_spectrogram" not in name:
-                # if "wav2vec_embeddings" not in name:
                     name_to_metadata_eff[name] = metadata
                 else:
                     if ("voice" in name) and (use_modality_partition["voice"]) and ("voice" in modality_combination):
@@ -122,20 +121,8 @@ class HeterogeneousBatchGenerator:
             else:
                 asthma_str = ""
 
-            # modality_combination_eff = modality_combination_eff + modality_combination[6:]
             modality_combination_clean = modality_combination_eff + modality_combination_eff_2
             modality_combination_eff = original_modality_availability + modality_combination_eff + modality_combination_eff_2 + asthma_str
-            # counter = 0
-            # if modality_combination_eff + repr(counter) not in self.batch_generators.keys():
-            #     modality_combination_eff = modality_combination_eff + repr(counter)
-            # else:
-            #     counter = 1
-            #     while True:
-            #         if modality_combination_eff + repr(counter) in self.batch_generators.keys():
-            #             counter += 1
-            #         else:
-            #             modality_combination_eff = modality_combination_eff + repr(counter)
-            #             break
 
             self.batch_generator_config[modality_combination_eff]["modality_combination_clean"] = modality_combination_clean
             self.batch_generator_config[modality_combination_eff]["name_to_metadata"] = name_to_metadata_eff
@@ -205,10 +192,3 @@ class HeterogeneousBatchGenerator:
             modality_combination = modality_combinations[c]
 
             yield self.batch_generator_config[modality_combination]["modality_combination_clean"], sess.run(next_element_list[c])
-
-            # if self.use_homogeneous_batches:
-            #     yield modality_combination[:-5], sess.run(next_element_list[c])
-            # else:
-            #     yield modality_combination[:-1], sess.run(next_element_list[c])
-            #     # yield modality_combination[:-1], sess.run(next_element_list[c])
-            #     # yield modality_combination[:6], sess.run(next_element_list[c])

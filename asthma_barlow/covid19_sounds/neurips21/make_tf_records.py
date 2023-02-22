@@ -521,8 +521,6 @@ def get_generator(dataset_dict,
     uid_to_numerical = dict()
     # web_counter = 0
 
-    # wav2vec2_model = preprocessing_utils.get_wav2vec2_model()
-
     metadata_df = dict()
     for recording_source in ["android", "ios", "web"]:
         metadata_df[recording_source] = pd.read_csv(METADATA_FILEPATH[recording_source],
@@ -624,9 +622,7 @@ def get_generator(dataset_dict,
                 except FileNotFoundError:
                     cough = librosa.load(subfolder_name + "/" + cough_filename[:-4] + ".wav", sr=16000)[0]
                 cough_x_dict = preprocessing_utils.get_features_and_stats(cough)
-                # cough_x_dict = preprocessing_utils.get_features_and_stats(cough, wav2vec2_model)
                 print(cough_x_dict["logmel_spectrogram"].shape)
-                # print(cough_x_dict["wav2vec_embeddings"].shape)
                 cough_size_list.append(cough.size)
             else:
                 cough = None
@@ -636,9 +632,7 @@ def get_generator(dataset_dict,
                 except FileNotFoundError:
                     breath = librosa.load(subfolder_name + "/" + breath_filename[:-4] + ".wav", sr=16000)[0]
                 breath_x_dict = preprocessing_utils.get_features_and_stats(breath)
-                # breath_x_dict = preprocessing_utils.get_features_and_stats(breath, wav2vec2_model)
                 print(breath_x_dict["logmel_spectrogram"].shape)
-                # print(breath_x_dict["wav2vec_embeddings"].shape)
                 breath_size_list.append(breath.size)
             else:
                 breath = None
@@ -648,9 +642,7 @@ def get_generator(dataset_dict,
                 except FileNotFoundError:
                     voice = librosa.load(subfolder_name + "/" + voice_filename[:-4] + ".wav", sr=16000)[0]
                 voice_x_dict = preprocessing_utils.get_features_and_stats(voice)
-                # voice_x_dict = preprocessing_utils.get_features_and_stats(voice, wav2vec2_model)
                 print(voice_x_dict["logmel_spectrogram"].shape)
-                # print(voice_x_dict["wav2vec_embeddings"].shape)
                 voice_size_list.append(voice.size)
             else:
                 voice = None
@@ -658,18 +650,12 @@ def get_generator(dataset_dict,
             x_dict = dict()
             if has_cough:
                 x_dict["cough_logmel_spectrogram"] = cough_x_dict["logmel_spectrogram"]
-                # x_dict["cough_waveform"] = cough_x_dict["waveform"]
-                # x_dict["cough_wav2vec_embeddings"] = cough_x_dict["wav2vec_embeddings"]
 
             if has_breath:
                 x_dict["breath_logmel_spectrogram"] = breath_x_dict["logmel_spectrogram"]
-                # x_dict["breath_waveform"] = breath_x_dict["waveform"]
-                # x_dict["breath_wav2vec_embeddings"] = breath_x_dict["wav2vec_embeddings"]
 
             if has_voice:
                 x_dict["voice_logmel_spectrogram"] = voice_x_dict["logmel_spectrogram"]
-                # x_dict["voice_waveform"] = voice_x_dict["waveform"]
-                # x_dict["voice_wav2vec_embeddings"] = voice_x_dict["wav2vec_embeddings"]
 
             y_dict = dict()
 
@@ -707,24 +693,12 @@ def get_generator(dataset_dict,
 
             support_dict = dict()
             if has_cough:
-                # support_dict["cough_wav2vec_embeddings_support"] = np.ones(
-                #     (x_dict["cough_wav2vec_embeddings"].shape[0], 1),
-                #     dtype=np.float32)
-                # if cough_x_dict["unsupport"] > 0:
-                #     support_dict["cough_wav2vec_embeddings_support"][-cough_x_dict["unsupport"]:, :] = 0.0
-                # print(x_dict["cough_wav2vec_embeddings"].shape)
                 support_dict["cough_logmel_spectrogram_support"] = np.ones((x_dict["cough_logmel_spectrogram"].shape[0], 1),
                                                                            dtype=np.float32)
                 if cough_x_dict["unsupport"] > 0:
                     support_dict["cough_logmel_spectrogram_support"][-cough_x_dict["unsupport"]:, :] = 0.0
                 print(x_dict["cough_logmel_spectrogram"].shape)
             if has_breath:
-                # support_dict["breath_wav2vec_embeddings_support"] = np.ones(
-                #     (x_dict["breath_wav2vec_embeddings"].shape[0], 1),
-                #     dtype=np.float32)
-                # if breath_x_dict["unsupport"] > 0:
-                #     support_dict["breath_wav2vec_embeddings_support"][-breath_x_dict["unsupport"]:, :] = 0.0
-                # print(x_dict["breath_wav2vec_embeddings"].shape)
                 support_dict["breath_logmel_spectrogram_support"] = np.ones(
                     (x_dict["breath_logmel_spectrogram"].shape[0], 1),
                     dtype=np.float32)
@@ -732,12 +706,6 @@ def get_generator(dataset_dict,
                     support_dict["breath_logmel_spectrogram_support"][-breath_x_dict["unsupport"]:, :] = 0.0
                 print(x_dict["breath_logmel_spectrogram"].shape)
             if has_voice:
-                # support_dict["voice_wav2vec_embeddings_support"] = np.ones(
-                #     (x_dict["voice_wav2vec_embeddings"].shape[0], 1),
-                #     dtype=np.float32)
-                # if voice_x_dict["unsupport"] > 0:
-                #     support_dict["voice_wav2vec_embeddings_support"][-voice_x_dict["unsupport"]:, :] = 0.0
-                # print(x_dict["voice_wav2vec_embeddings"].shape)
                 support_dict["voice_logmel_spectrogram_support"] = np.ones((x_dict["voice_logmel_spectrogram"].shape[0], 1),
                                                                            dtype=np.float32)
                 if voice_x_dict["unsupport"] > 0:
@@ -767,24 +735,7 @@ common_non_asthma_user_set = sorted(common_non_asthma_user_set)
 web_common_asthma_user_set = sorted(web_common_asthma_user_set)
 web_common_non_asthma_user_set = sorted(web_common_non_asthma_user_set)
 
-# random.seed(0)
-# random.shuffle(common_asthma_user_set)
-# random.shuffle(common_non_asthma_user_set)
-
 user_to_partition = dict()
-# Naive dataset partitioning.
-# for user in common_asthma_user_set[0:1080]:
-#     user_to_partition[user] = "train"
-# for user in common_asthma_user_set[1080:1580]:
-#     user_to_partition[user] = "devel"
-# for user in common_asthma_user_set[1580:2080]:
-#     user_to_partition[user] = "test"
-# for user in common_non_asthma_user_set[0:2160]:
-#     user_to_partition[user] = "train"
-# for user in common_non_asthma_user_set[2160:3160]:
-#     user_to_partition[user] = "devel"
-# for user in common_non_asthma_user_set[3160:4160]:
-#     user_to_partition[user] = "test"
 
 # Fair dataset partitioning.
 user_ids_sorted = np.array(user_ids_sorted)
