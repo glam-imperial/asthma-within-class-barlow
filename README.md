@@ -8,10 +8,10 @@ A regularising auxiliary task is used in the loss value calculation that is base
 
 The dataset used in this paper that contains asthma diagnosis labels was introduced in [2]. Our core model, which also serves as a baseline is a finetuned on this dataset, pre-trained VGGish model [3]. The pre-training weights, and implementation of the core model can be found in [4].
 
-[1] https://arxiv.org/abs/2103.03230
-[2] https://datasets-benchmarks-proceedings.neurips.cc/paper/2021/hash/e2c0be24560d78c5e599c2a9c9d0bbd2-Abstract-round2.html
-[3] https://research.google/pubs/pub45611/
-[4] https://pypi.org/project/vggish-keras/
+- [1] https://arxiv.org/abs/2103.03230
+- [2] https://datasets-benchmarks-proceedings.neurips.cc/paper/2021/hash/e2c0be24560d78c5e599c2a9c9d0bbd2-Abstract-round2.html
+- [3] https://research.google/pubs/pub45611/
+- [4] https://pypi.org/project/vggish-keras/
 
 (Partially uploaded -- cleanup and complete uploading imminent)
 
