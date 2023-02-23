@@ -1,10 +1,8 @@
 import math
 
 import numpy as np
-import tensorflow as tf
 
 from common.common import safe_make_dir
-from variational.layers import VariationalLayer, DenseReparameterisation, Conv2dReparameterization, VariationalGRUCell
 
 # TODO: Store other stuff, apart from the prediction.
 # TODO: Update for multiple binary classification.

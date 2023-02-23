@@ -3,7 +3,9 @@ import collections
 import numpy as np
 
 from common.losses import _calculate_weighted_binary_crossentropy,\
-    _calculate_weighted_binary_softmax_crossentropy, _calculate_barlow_twins_loss, _calculate_norm_loss
+    _calculate_weighted_binary_softmax_crossentropy,\
+    _calculate_barlow_twins_loss,\
+    _calculate_norm_loss
 
 
 def get_loss(pred_train,
@@ -13,7 +15,6 @@ def get_loss(pred_train,
              pos_weights,
              ssl_regulariser,
              ssl_type):
-    global_pooling = model_configuration["global_pooling"]
     print(pos_weights)
 
     def loss_factory(modality_combination,
@@ -26,9 +27,6 @@ def get_loss(pred_train,
                           y_pred):
             loss_value = 0.0
 
-            # Meta cleaner.
-            # y_true = tf.reduce_mean(y_true, axis=0, keepdims=True)
-
             print(target_name)
             print(y_true.shape)
             print(pred_train[modality_combination][target_name].shape)
@@ -38,19 +36,13 @@ def get_loss(pred_train,
                              _calculate_weighted_binary_crossentropy(target=y_true[:, 0],
                                                                      output=pred_train[modality_combination][
                                                                                 target_name][:, 0],
-                                                                     output_var=None,
-                                                                     from_logits=True,
-                                                                     positive_weight=pos_weight,
-                                                                     use_epistemic_smoothing=False) * weight
+                                                                     positive_weight=pos_weight) * weight
             elif task_type == "multiclass_classification":
                 loss_value = loss_value + \
                              _calculate_weighted_binary_softmax_crossentropy(target=y_true,
                                                                              output=pred_train[modality_combination][
                                                                                  target_name],
-                                                                             output_var=None,
-                                                                             from_logits=True,
-                                                                             positive_weight=pos_weight,
-                                                                             use_epistemic_smoothing=False) * weight
+                                                                             positive_weight=pos_weight) * weight
             else:
                 raise ValueError
 
@@ -65,91 +57,7 @@ def get_loss(pred_train,
             return loss_value
         return loss_instance
 
-    # def loss_asthma_single(y_true, y_pred):
-    #     loss_value = 0.0
-    #
-    #     print(y_true.shape)
-    #     print(pred_train["single"]["asthma"].shape)
-    #
-    #     # loss_value = loss_value + \
-    #     #              _calculate_weighted_binary_softmax_crossentropy(target=y_true,
-    #     #                                                      output=pred_train["single"][
-    #     #                                                                 "asthma"],
-    #     #                                                      output_var=None,
-    #     #                                                      from_logits=True,
-    #     #                                                      positive_weight=pos_weights["asthma"][0],
-    #     #                                                      use_epistemic_smoothing=False) * 1.0
-    #
-    #     loss_value = loss_value +\
-    #                  _calculate_weighted_binary_crossentropy(target=y_true[:, 0],
-    #                                                          output=pred_train["single"][
-    #                                                                            "asthma"][:, 0],
-    #                                                          output_var=None,
-    #                                                          from_logits=True,
-    #                                                          positive_weight=pos_weights["asthma"][0],
-    #                                                          # positive_weight=2.0,
-    #                                                          use_epistemic_smoothing=False) * 1.0
-    #
-    #     return loss_value
-    #
-    # def loss_asthma_double(y_true, y_pred):
-    #     loss_value = 0.0
-    #
-    #     # loss_value = loss_value + \
-    #     #              _calculate_weighted_binary_softmax_crossentropy(target=y_true,
-    #     #                                                      output=pred_train["double"][
-    #     #                                                                 "asthma"],
-    #     #                                                      output_var=None,
-    #     #                                                      from_logits=True,
-    #     #                                                      positive_weight=pos_weights["asthma"][0],
-    #     #                                                      use_epistemic_smoothing=False) * 1.0
-    #
-    #     loss_value = loss_value +\
-    #                  _calculate_weighted_binary_crossentropy(target=y_true[:, 0],
-    #                                                          output=pred_train["double"][
-    #                                                                            "asthma"][:, 0],
-    #                                                          output_var=None,
-    #                                                          from_logits=True,
-    #                                                          positive_weight=pos_weights["asthma"][0],
-    #                                                          # positive_weight=2.0,
-    #                                                          use_epistemic_smoothing=False) * 1.0
-    #
-    #     return loss_value
-    #
-    # def loss_asthma_triple(y_true, y_pred):
-    #     loss_value = 0.0
-    #
-    #     # loss_value = loss_value + \
-    #     #              _calculate_weighted_binary_softmax_crossentropy(target=y_true,
-    #     #                                                      output=pred_train["triple"][
-    #     #                                                                 "asthma"],
-    #     #                                                      output_var=None,
-    #     #                                                      from_logits=True,
-    #     #                                                      positive_weight=pos_weights["asthma"][0],
-    #     #                                                      use_epistemic_smoothing=False) * 1.0
-    #
-    #     loss_value = loss_value +\
-    #                  _calculate_weighted_binary_crossentropy(target=y_true[:, 0],
-    #                                                          output=pred_train["triple"][
-    #                                                                            "asthma"][:, 0],
-    #                                                          output_var=None,
-    #                                                          from_logits=True,
-    #                                                          positive_weight=pos_weights["asthma"][0],
-    #                                                          # positive_weight=2.0,
-    #                                                          use_epistemic_smoothing=False) * 1.0
-    #
-    #     return loss_value
-
-    # loss = dict()
-    # # loss["single"] = {"feed_forward_block": loss_asthma_single}
-    # loss["single"] = {"ff_0": loss_asthma_single}
-    # # loss["double"] = {"feed_forward_block": loss_asthma_double}
-    # loss["double"] = {"ff_1": loss_asthma_double}
-    # # loss["triple"] = {"feed_forward_block": loss_asthma_triple}
-    # loss["triple"] = {"ff_2": loss_asthma_triple}
-
     loss = collections.defaultdict(dict)
-    # for m_i, modality_combination in enumerate(["single", "double", "triple"]):
     for m_i, modality_combination in enumerate(["single_voice",
                                                 "single_breath",
                                                 "single_cough",

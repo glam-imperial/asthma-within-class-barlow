@@ -4,10 +4,14 @@ import os
 
 from common.metadata_util import process_metadata, filter_names
 
+#########################################################################################################
+# Edit these.
+#########################################################################################################
 PROJECT_FOLDER = '/data/PycharmProjects/asthma-within-class-barlow'
-
 DATA_FOLDER = "/data/Downloads/COVIDSounds/NeurIPS2021-data"
-AUDIO_FOLDER = DATA_FOLDER + "/covid19_data_0426"
+
+# Can leave the below as they are.
+AUDIO_FOLDER = DATA_FOLDER + "/covid19_data_0426/covid19_data_0426"
 TFRECORDS_FOLDER = DATA_FOLDER + "/tfrecords_fair"
 OUTPUT_FOLDER = DATA_FOLDER + '/Results'
 
